@@ -792,6 +792,9 @@ const FIVE_CARS = {
   }
 };
 
+// Parte del voladizo total que corresponde al paragolpes; el resto es capó o maletero
+const BUMPER_SHARE = 0.30;
+
 function derive(base){
   const P = Object.assign({}, base);
   const Z = CONFIG.zones;
@@ -819,11 +822,18 @@ function derive(base){
   const hoodOverhang  = (Z.hood.overhang !== undefined) ? Z.hood.overhang : 1.0;
   const trunkOverhang = (Z.trunk.overhang !== undefined) ? Z.trunk.overhang : 1.0;
 
-  P.frontOverhang = Math.max(0.00, baseOverhangF * Z.frontBumper.length * hoodOverhang);
-  P.rearOverhang  = Math.max(0.00, baseOverhangR * Z.rearBumper.length  * trunkOverhang);
+  // Cada voladizo se reparte entre capó/maletero y paragolpes. El paragolpes sobresale desde el
+  // borde del capó (hoodFrontZ) o del maletero (trunkRearZ): moverlo no alarga la pieza contigua.
+  const frontReach = baseOverhangF * hoodOverhang;
+  const rearReach  = baseOverhangR * trunkOverhang;
 
-  P.zF = baseFrontAxleZ + P.frontOverhang;
-  P.zR = baseRearAxleZ  - P.rearOverhang;
+  P.hoodFrontZ     = baseFrontAxleZ + frontReach * (1 - BUMPER_SHARE);
+  P.trunkRearZ     = baseRearAxleZ  - rearReach  * (1 - BUMPER_SHARE);
+  P.frontBumperLen = Math.max(0.08, frontReach * BUMPER_SHARE * Z.frontBumper.length);
+  P.rearBumperLen  = Math.max(0.08, rearReach  * BUMPER_SHARE * Z.rearBumper.length);
+
+  P.zF = P.hoodFrontZ + P.frontBumperLen;
+  P.zR = P.trunkRearZ - P.rearBumperLen;
 
   // Extensión del capó y maletero hacia la cabina (usando la referencia base fija)
   const baseHoodSpan  = baseFrontAxleZ - base.cabinFrontZ;
@@ -1412,12 +1422,12 @@ function bodyProfilePoints(P){
   const rH = CONFIG.zones.rearBumper.height;
   const rC = CONFIG.zones.rearBumper.curve;
 
-  const hoodSpan  = Math.max(0.05, zF - cF);
-  const trunkSpan = Math.max(0.05, cR - zR);
+  const hoodSpan  = Math.max(0.05, P.hoodFrontZ - cF);
+  const trunkSpan = Math.max(0.05, cR - P.trunkRearZ);
 
-  // Curva de morro y zaga independientes de los ejes
-  const fOver = Math.max(0.08, Math.min(hoodSpan * 0.45, P.frontOverhang));
-  const rOver = Math.max(0.08, Math.min(trunkSpan * 0.45, P.rearOverhang));
+  // Morro y zaga: la forma del paragolpes se mide con su propio saliente
+  const fOver = P.frontBumperLen;
+  const rOver = P.rearBumperLen;
 
   function getHoodY(z){
     const t = THREE.MathUtils.clamp((z - cF) / hoodSpan, 0, 1);
@@ -1448,6 +1458,7 @@ function bodyProfilePoints(P){
     new THREE.Vector2(zF - fOver * 0.18 * (1 - fC * 0.25), b + (noseTopY - b) * 0.25 * fH),
     new THREE.Vector2(zF - fOver * 0.35, b + (noseTopY - b) * 0.65 * fH),
     new THREE.Vector2(zF - fOver * 0.55, noseTopY),
+    new THREE.Vector2(P.hoodFrontZ, getHoodY(P.hoodFrontZ)),
     new THREE.Vector2(zHood2, getHoodY(zHood2)),
     new THREE.Vector2(zHood1, getHoodY(zHood1)),
     new THREE.Vector2(cF, fB),
@@ -1461,6 +1472,7 @@ function bodyProfilePoints(P){
     new THREE.Vector2(cR, rB),
     new THREE.Vector2(zTrunk1, getTrunkY(zTrunk1)),
     new THREE.Vector2(zTrunk2, getTrunkY(zTrunk2)),
+    new THREE.Vector2(P.trunkRearZ, getTrunkY(P.trunkRearZ)),
     new THREE.Vector2(zR + rOver * 0.40, b + (tailTopY - b) * 0.60 * rH),
     new THREE.Vector2(zR + rOver * 0.20 * (1 - rC * 0.3), b + (tailTopY - b) * 0.20 * rH),
     new THREE.Vector2(zR + Math.min(0.05, rOver * 0.3), b),
@@ -1586,13 +1598,13 @@ function buildBody(P){
   // Líneas de diseño
   if (CONFIG.designLines.enabled) {
     const lThick = CONFIG.designLines.thickness;
-    if (P.frontOverhang >= 0.15) {
-      const zFront = P.zF - Math.min(0.65, P.frontOverhang * 0.7);
+    if (P.frontBumperLen >= 0.15) {
+      const zFront = P.hoodFrontZ;
       const yFront = P.bottomY + (P.noseTopY - P.bottomY) * 0.5;
       addPanelGap(g, 'BumperLineF', [P.width + 0.005, lThick, 0.02], [0, yFront, zFront]);
     }
-    if (P.rearOverhang >= 0.15) {
-      const zRear = P.zR + Math.min(0.65, P.rearOverhang * 0.7);
+    if (P.rearBumperLen >= 0.15) {
+      const zRear = P.trunkRearZ;
       const yRear = P.bottomY + (P.tailTopY - P.bottomY) * 0.5;
       addPanelGap(g, 'BumperLineR', [P.width + 0.005, lThick, 0.02], [0, yRear, zRear]);
     }
@@ -2376,14 +2388,12 @@ function disposeGroup(root){
 function zoneBounds(zone, P){
   const b = P.bottomY, roof = P.roofY;
   const x = P.halfW + 0.05;
-  const bumperF_depth = Math.min(0.65, Math.max(0.08, P.frontOverhang * 0.7));
-  const bumperR_depth = Math.min(0.65, Math.max(0.08, P.rearOverhang * 0.7));
   const range = {
-    frontBumper: [P.zF - bumperF_depth, P.zF + 0.05],
-    hood:        [P.cabinFrontZ, P.zF - bumperF_depth],
+    frontBumper: [P.hoodFrontZ, P.zF + 0.05],
+    hood:        [P.cabinFrontZ, P.hoodFrontZ],
     cabin:       [P.cabinRearZ, P.cabinFrontZ],
-    trunk:       [P.zR + bumperR_depth, P.cabinRearZ],
-    rearBumper:  [P.zR - 0.05, P.zR + bumperR_depth],
+    trunk:       [P.trunkRearZ, P.cabinRearZ],
+    rearBumper:  [P.zR - 0.05, P.trunkRearZ],
   }[zone];
   const minZ = Math.min(range[0], range[1]);
   const maxZ = Math.max(range[0], range[1]);
@@ -2560,12 +2570,10 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
 function zoneFromZ(z, P){
-  const bumperF_depth = Math.min(0.65, Math.max(0.08, P.frontOverhang * 0.7));
-  const bumperR_depth = Math.min(0.65, Math.max(0.08, P.rearOverhang * 0.7));
-  if (z > P.zF - bumperF_depth) return 'frontBumper';
-  if (z > P.cabinFrontZ)        return 'hood';
-  if (z > P.cabinRearZ)         return 'cabin';
-  if (z > P.zR + bumperR_depth) return 'trunk';
+  if (z > P.hoodFrontZ)  return 'frontBumper';
+  if (z > P.cabinFrontZ) return 'hood';
+  if (z > P.cabinRearZ)  return 'cabin';
+  if (z > P.trunkRearZ)  return 'trunk';
   return 'rearBumper';
 }
 
@@ -2907,9 +2915,60 @@ function syncUI(){
   renderZoneSliders();
 }
 
+// Límites para que el coche aleatorio sea usable: sitio para los ocupantes y ruedas dentro de la carrocería
+const REALISM = {
+  headroom: 1.15,          // m libres entre el suelo del habitáculo y el techo
+  cabinSpan: [1.85, 3.60], // m de habitáculo: desde dos plazas hasta una limusina
+  minHood: 0.15,           // m mínimos de capó y de maletero
+  tyreClear: 0.10,         // m entre el neumático y el extremo de la carrocería
+};
+
+function isPlausibleCar(){
+  const P = derive(PRESETS[CONFIG.model]);
+  const cabinSpan = P.cabinFrontZ - P.cabinRearZ;
+  return P.roofY - (P.bottomY + 0.04) >= REALISM.headroom
+    && cabinSpan >= REALISM.cabinSpan[0] && cabinSpan <= REALISM.cabinSpan[1]
+    && P.hoodFrontZ - P.cabinFrontZ >= REALISM.minHood
+    && P.cabinRearZ - P.trunkRearZ >= REALISM.minHood
+    && P.frontAxleZ + P.wheelR <= P.zF - REALISM.tyreClear
+    && P.rearAxleZ - P.wheelR >= P.zR + REALISM.tyreClear;
+}
+
 function randomize(){
+  const rnd = (a, b) => a + Math.random() * (b - a);
   const models = Object.keys(PRESETS);
-  CONFIG.model = models[Math.floor(Math.random() * models.length)];
+
+  // Se repite el muestreo hasta que las proporciones cumplan REALISM
+  for (let attempt = 0; attempt < 300; attempt++){
+    CONFIG.model = models[Math.floor(Math.random() * models.length)];
+    const base = PRESETS[CONFIG.model];
+    // Altura mínima del habitáculo para que quepa un adulto sentado con holgura
+    const minCabinH = (REALISM.headroom + base.bottomY + 0.04) / base.roofY;
+
+    CONFIG.frontAxleOffset = rnd(-0.10, 0.10);
+    CONFIG.rearAxleOffset  = rnd(-0.10, 0.10);
+    CONFIG.wheelRadius     = rnd(0.97, 1.03);
+    CONFIG.wheelSpacer     = DEFAULTS.wheelSpacer;
+    CONFIG.zones = {
+      frontBumper: { ...DEFAULTS.zones.frontBumper, height: rnd(0.8, 1.0), curve: rnd(0.3, 0.6), length: rnd(0.9, 1.2) },
+      hood:        { ...DEFAULTS.zones.hood, length: rnd(0.95, 1.05), overhang: rnd(0.75, 0.95), noseHeight: rnd(0.85, 1.0), curve: rnd(-0.05, 0.05) },
+      cabin:       { height: rnd(minCabinH + 0.02, Math.min(minCabinH + 0.15, 1.2)), length: rnd(0.95, 1.05) },
+      trunk:       { ...DEFAULTS.zones.trunk, length: rnd(0.9, 1.05), overhang: rnd(0.85, 1.1), tailHeight: rnd(0.85, 1.0), curve: rnd(-0.05, 0.05) },
+      rearBumper:  { ...DEFAULTS.zones.rearBumper, height: rnd(0.8, 1.0), curve: rnd(0.3, 0.6), length: rnd(0.9, 1.2) },
+    };
+    applyPresetGlass(CONFIG.model);
+    if (isPlausibleCar()) break;
+  }
+
+  if (!isPlausibleCar()){
+    // Ningún intento cumplió los límites: vuelve al sedán de fábrica
+    CONFIG.model = 'sedan';
+    CONFIG.frontAxleOffset = 0;
+    CONFIG.rearAxleOffset = 0;
+    CONFIG.wheelRadius = DEFAULTS.wheelRadius;
+    CONFIG.zones = JSON.parse(JSON.stringify(DEFAULTS.zones));
+    applyPresetGlass(CONFIG.model);
+  }
 
   const c = new THREE.Color().setHSL(Math.random(), 0.6, 0.4);
   CONFIG.paint.color = '#' + c.getHexString();
@@ -2922,12 +2981,6 @@ function randomize(){
     CONFIG.roofPaint.syncBodyColor = true;
     CONFIG.roofPaint.color = CONFIG.paint.color;
   }
-
-  CONFIG.frontAxleOffset = (Math.random() - 0.5) * 0.5;
-  CONFIG.rearAxleOffset  = (Math.random() - 0.5) * 0.5;
-
-  CONFIG.zones.cabin.height = 0.85 + Math.random() * 0.35;
-  CONFIG.zones.cabin.length = 0.85 + Math.random() * 0.30;
 
   updateMaterials();
   syncUI();
@@ -2944,9 +2997,16 @@ function resetAll(){
 
 function exportGLB(){
   setStatus('Exportando GLB…');
+  // La caja de selección es solo del editor: se oculta mientras dura la exportación
+  const highlight = zoneHighlight;
+  const highlightWasVisible = highlight ? highlight.visible : false;
+  if (highlight) highlight.visible = false;
+  const restoreHighlight = () => { if (highlight) highlight.visible = highlightWasVisible; };
+
   new GLTFExporter().parse(
     showroomMode ? showroomGroup : car,
     buf => {
+      restoreHighlight();
       const blob = new Blob([buf], { type: 'model/gltf-binary' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -2956,8 +3016,8 @@ function exportGLB(){
       setStatus('✓ GLB exportado');
       setTimeout(() => setStatus('✓ Listo'), 2000);
     },
-    err => { console.error(err); setStatus('❌ Error al exportar'); },
-    { binary: true }
+    err => { restoreHighlight(); console.error(err); setStatus('❌ Error al exportar'); },
+    { binary: true, onlyVisible: true }
   );
 }
 
