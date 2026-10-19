@@ -197,11 +197,11 @@
     <label for="carPresetSelect">✨ Garaje (5 Modelos Prediseñados)</label>
     <select id="carPresetSelect">
       <option value="">-- Elige un coche prediseñado --</option>
-      <option value="phantom">👑 1. Phantom V8 Luxury (Capó recto y largo)</option>
-      <option value="supercar">⚡ 2. Cyber Wedge GT (Morro en cuña baja)</option>
-      <option value="offroad">🚙 3. Baja 4x4 Crawler (Sin voladizos & tacos)</option>
-      <option value="monaco">🏎 4. Monaco Grand Tourer (Cupé bitono clásico)</option>
-      <option value="urban">🚀 5. Neon Speedster EV (Compacto futurista)</option>
+      <option value="fastback">⚡ 1. Fastback eléctrico (Perfil bajo, techo que cae)</option>
+      <option value="crossover">🔋 2. Crossover eléctrico boxy (Silueta cuadrada)</option>
+      <option value="retro">🎨 3. Hatch retro urbano (Faros redondos, dos tonos)</option>
+      <option value="gt4">🏁 4. GT cuatro puertas (Cupé bajo y ancho)</option>
+      <option value="mpv">🚐 5. Monovolumen familiar (Cabina alta, zaga vertical)</option>
     </select>
     <div style="margin-top:8px">
       <button id="btnShowroom" class="highlight-btn" style="width:100%">🏢 Modo Showroom (Ver los 5 juntos)</button>
@@ -302,8 +302,8 @@
     <div class="sl"><span>Grosor radios (3D)</span><input type="range" id="spokeDepth" min="0.01" max="0.08" step="0.005"><b id="vSpokeD"></b></div>
     <div class="sl"><span>Concavidad llanta</span><input type="range" id="spokeConcave" min="-0.06" max="0.08" step="0.005"><b id="vSpokeConc"></b></div>
     <div class="sl"><span>Separación ejes (X)</span><input type="range" id="wheelSpacer" min="0" max="0.22" step="0.01"><b id="vWSpacer"></b></div>
-    <div class="sl"><span>Posición Eje Delantero</span><input type="range" id="frontAxleOffset" min="-1.20" max="1.20" step="0.02"><b id="vAxleF"></b></div>
-    <div class="sl"><span>Posición Eje Trasero</span><input type="range" id="rearAxleOffset" min="-1.20" max="1.20" step="0.02"><b id="vAxleR"></b></div>
+    <div class="sl"><span>Posición Eje Delantero</span><input type="range" id="frontAxleOffset" min="-0.50" max="0.50" step="0.02"><b id="vAxleF"></b></div>
+    <div class="sl"><span>Posición Eje Trasero</span><input type="range" id="rearAxleOffset" min="-0.50" max="0.50" step="0.02"><b id="vAxleR"></b></div>
     <div class="row" style="margin-top:7px">
       <input type="color" id="rimColor" value="#c8c8d0" title="Color de Llanta">
     </div>
@@ -661,133 +661,133 @@ const PRESETS = {
   },
 };
 
-// LOS 5 COCHES DISEÑADOS
+// LOS 5 COCHES DE REFERENCIA: inspirados en tendencias actuales (sin marcas)
 const FIVE_CARS = {
-  phantom: {
-    name: '1. Phantom V8 Luxury',
-    desc: 'Capó recto y largo, techo bitono negro azabache y porte aristocrático.',
-    model: 'limousine',
+  fastback: {
+    name: '1. Fastback eléctrico',
+    desc: 'Perfil bajo, techo que cae hacia la zaga y frente cerrado; blanco perlado con techo de cristal oscuro.',
+    model: 'sedan',
     config: {
-      paint: { color: '#0f172a', type: 'metallic', metalness: 0.92, roughness: 0.15, clearcoat: 1.0 },
-      roofPaint: { color: '#05070a', syncBodyColor: false },
-      frontAxleOffset: 0.25,
-      rearAxleOffset: -0.20,
+      paint: { color: '#e5e7eb', type: 'pearl', metalness: 0.55, roughness: 0.16, clearcoat: 1.0 },
+      roofPaint: { color: '#0b0d10', syncBodyColor: false },
+      frontAxleOffset: 0.0,
+      rearAxleOffset: 0.0,
       zones: {
-        frontBumper: { height: 1.00, curve: 0.30, length: 1.15 },
-        hood: { height: 1.05, length: 1.35, overhang: 1.45, noseHeight: 1.00, curve: 0.0, linked: false },
-        cabin: { height: 1.02, length: 1.00 },
-        trunk: { height: 0.94, length: 0.90, overhang: 1.10, tailHeight: 0.88, curve: -0.04, linked: false },
-        rearBumper: { height: 1.00, curve: 0.45, length: 1.00 },
+        frontBumper: { height: 0.70, curve: 0.50, length: 0.60 },
+        hood: { height: 0.82, length: 0.90, overhang: 0.55, noseHeight: 0.60, curve: 0.00, linked: false },
+        cabin: { height: 0.97, length: 1.00 },
+        trunk: { height: 0.95, length: 0.95, overhang: 1.00, tailHeight: 0.70, curve: 0.15, linked: false },
+        rearBumper: { height: 0.70, curve: 0.50, length: 0.60 },
       },
-      glass: { roofCurve: 0.04, opacity: 0.40, roofMetalX: 0.10, roofMetalZ: 0.10 },
-      rim: { style: 'turbine', spokes: 14, spokeWidth: 0.055, spokeDepth: 0.025, concavity: 0.02, color: '#e2e8f0' },
+      glass: { roofCurve: 0.10, opacity: 0.30, roofMetalX: 0.02, roofMetalZ: 0.02 },
+      rim: { style: 'turbine', spokes: 14, spokeWidth: 0.06, spokeDepth: 0.025, concavity: 0.02, color: '#cbd5e1' },
       tire: { treadStyle: 'sport', bumpScale: 0.10 },
-      headlight: { type: 'matrix', emissiveIntensity: 4.2 },
-      taillight: { type: 'bar', emissiveIntensity: 3.5 },
-      embeds: { grille: { type: 'slats', texture: 'brushedBlack' }, exhaust: { type: 'dual' } },
-      interior: { dashboard: 'luxury', leatherColor: '#2b1b11', woodColor: '#4f240e', ambientColor: '#f59e0b' },
+      headlight: { type: 'strip', emissiveIntensity: 4.5 },
+      taillight: { type: 'bar', emissiveIntensity: 4.0 },
+      embeds: { grille: { type: 'solid', texture: 'carbon' }, exhaust: { type: 'none' } },
+      interior: { dashboard: 'futuristic', leatherColor: '#1e293b', ambientColor: '#22d3ee' },
     }
   },
-  supercar: {
-    name: '2. Cyber Wedge GT',
-    desc: 'Morro en cuña baja, techo en contraste rojo carmesí y perfil superdeportivo.',
-    model: 'coupe',
-    config: {
-      paint: { color: '#d91424', type: 'pearl', metalness: 0.70, roughness: 0.14, clearcoat: 1.0 },
-      roofPaint: { color: '#111317', syncBodyColor: false },
-      frontAxleOffset: 0.16,
-      rearAxleOffset: -0.12,
-      zones: {
-        frontBumper: { height: 0.82, curve: 0.90, length: 0.90 },
-        hood: { height: 0.88, length: 1.15, overhang: 1.10, noseHeight: 0.44, curve: -0.24, linked: false },
-        cabin: { height: 0.92, length: 1.00 },
-        trunk: { height: 1.05, length: 0.82, overhang: 1.25, tailHeight: 1.15, curve: 0.16, linked: false },
-        rearBumper: { height: 1.12, curve: 1.25, length: 1.15 },
-      },
-      glass: { roofCurve: 0.15, opacity: 0.32, roofMetalX: 0.06, roofMetalZ: 0.06 },
-      rim: { style: 'split-5', spokes: 10, spokeWidth: 0.075, spokeDepth: 0.03, concavity: 0.04, color: '#1e293b' },
-      tire: { treadStyle: 'racing', bumpScale: 0.15 },
-      headlight: { type: 'strip', emissiveIntensity: 5.5 },
-      taillight: { type: 'neon', emissiveIntensity: 4.8 },
-      embeds: { grille: { type: 'honeycomb', texture: 'carbon' }, exhaust: { type: 'quad' } },
-      interior: { dashboard: 'sport', leatherColor: '#171717', ambientColor: '#ff0033' },
-    }
-  },
-  offroad: {
-    name: '3. Baja 4x4 Crawler',
-    desc: 'Ejes al extremo de la carrocería, parachoques a cero y ruedas sobreelevadas.',
+  crossover: {
+    name: '2. Crossover eléctrico boxy',
+    desc: 'Silueta cuadrada, trasera vertical y ruedas grandes; gris mate con techo oscuro.',
     model: 'suv',
     config: {
-      paint: { color: '#3d4d38', type: 'matte', metalness: 0.20, roughness: 0.85, clearcoat: 0.0 },
-      roofPaint: { color: '#273324', syncBodyColor: false },
-      frontAxleOffset: 0.32,
-      rearAxleOffset: -0.30,
-      wheelRadius: 1.30,
-      wheelSpacer: 0.10,
+      paint: { color: '#6b7280', type: 'matte', metalness: 0.20, roughness: 0.80, clearcoat: 0.0 },
+      roofPaint: { color: '#111827', syncBodyColor: false },
+      frontAxleOffset: 0.0,
+      rearAxleOffset: 0.0,
+      wheelRadius: 1.10,
+      wheelSpacer: 0.04,
       zones: {
-        frontBumper: { height: 0.45, curve: 0.15, length: 0.00 },
-        hood: { height: 1.00, length: 1.02, overhang: 0.00, noseHeight: 0.86, curve: 0.10, linked: false },
-        cabin: { height: 1.08, length: 1.00 },
-        trunk: { height: 1.00, length: 0.95, overhang: 0.00, tailHeight: 0.92, curve: 0.04, linked: false },
-        rearBumper: { height: 0.45, curve: 0.15, length: 0.00 },
+        frontBumper: { height: 0.90, curve: 0.30, length: 0.90 },
+        hood: { height: 1.00, length: 0.90, overhang: 0.85, noseHeight: 1.00, curve: 0.00, linked: false },
+        cabin: { height: 1.05, length: 1.00 },
+        trunk: { height: 1.05, length: 0.90, overhang: 1.00, tailHeight: 1.20, curve: -0.05, linked: false },
+        rearBumper: { height: 0.90, curve: 0.30, length: 0.90 },
       },
-      glass: { roofCurve: 0.02, opacity: 0.45, roofMetalX: 0.15, roofMetalZ: 0.15 },
-      rim: { style: 'mesh', spokes: 12, spokeWidth: 0.065, spokeDepth: 0.03, concavity: 0.02, color: '#334155' },
-      tire: { treadStyle: 'all-terrain', bumpScale: 0.25 },
-      headlight: { type: 'halo', emissiveIntensity: 4.5 },
-      taillight: { type: 'split', emissiveIntensity: 3.2 },
-      embeds: { grille: { type: 'mesh', texture: 'diamond' }, exhaust: { type: 'dual' } },
-      interior: { dashboard: 'minimal', leatherColor: '#262626', ambientColor: '#eab308' },
+      glass: { roofCurve: 0.03, opacity: 0.40, roofMetalX: 0.15, roofMetalZ: 0.10 },
+      rim: { style: 'multi-spoke', spokes: 5, spokeWidth: 0.08, spokeDepth: 0.03, concavity: 0.02, color: '#94a3b8' },
+      tire: { treadStyle: 'all-terrain', bumpScale: 0.18 },
+      headlight: { type: 'strip', emissiveIntensity: 4.2 },
+      taillight: { type: 'bar', emissiveIntensity: 3.6 },
+      embeds: { grille: { type: 'solid', texture: 'carbon' }, exhaust: { type: 'none' } },
+      interior: { dashboard: 'minimal', leatherColor: '#1f2937', ambientColor: '#38bdf8' },
     }
   },
-  monaco: {
-    name: '4. Monaco Grand Tourer',
-    desc: 'Clásico azul zafiro con techo blanco marfil y elegantes radios de estrella.',
-    model: 'coupe',
-    config: {
-      paint: { color: '#133a75', type: 'metallic', metalness: 0.88, roughness: 0.18, clearcoat: 1.0 },
-      roofPaint: { color: '#f8fafc', syncBodyColor: false },
-      frontAxleOffset: -0.05,
-      rearAxleOffset: 0.08,
-      zones: {
-        frontBumper: { height: 1.00, curve: 0.65, length: 1.10 },
-        hood: { height: 0.98, length: 1.32, overhang: 1.20, noseHeight: 0.84, curve: 0.26, linked: false },
-        cabin: { height: 0.98, length: 1.00 },
-        trunk: { height: 0.92, length: 0.88, overhang: 1.05, tailHeight: 0.80, curve: -0.10, linked: false },
-        rearBumper: { height: 0.95, curve: 0.60, length: 1.05 },
-      },
-      glass: { roofCurve: 0.12, opacity: 0.35, roofMetalX: 0.12, roofMetalZ: 0.12 },
-      rim: { style: 'star-5', spokes: 5, spokeWidth: 0.09, spokeDepth: 0.025, concavity: 0.035, color: '#e2e8f0' },
-      tire: { treadStyle: 'sport', bumpScale: 0.11 },
-      headlight: { type: 'round', emissiveIntensity: 4.0 },
-      taillight: { type: 'round', emissiveIntensity: 3.8 },
-      embeds: { grille: { type: 'slats', texture: 'brushedBlack' }, exhaust: { type: 'dual' } },
-      interior: { dashboard: 'luxury', leatherColor: '#451a03', woodColor: '#78350f', ambientColor: '#38bdf8' },
-    }
-  },
-  urban: {
-    name: '5. Neon Speedster EV',
-    desc: 'Eléctrico ágil en amarillo dorado con techo de cristal panorámico y alerón en cola.',
+  retro: {
+    name: '3. Hatch retro urbano',
+    desc: 'Hatchback compacto con faros redondos, carrocería amarilla y techo blanco contrastado.',
     model: 'compact',
     config: {
-      paint: { color: '#eab308', type: 'metallic', metalness: 0.85, roughness: 0.20, clearcoat: 1.0 },
-      roofPaint: { color: '#0f172a', syncBodyColor: false },
-      frontAxleOffset: -0.12,
-      rearAxleOffset: 0.10,
+      paint: { color: '#facc15', type: 'solid', metalness: 0.10, roughness: 0.35, clearcoat: 1.0 },
+      roofPaint: { color: '#f8fafc', syncBodyColor: false },
+      frontAxleOffset: 0.0,
+      rearAxleOffset: 0.0,
       zones: {
-        frontBumper: { height: 0.70, curve: 0.40, length: 0.25 },
-        hood: { height: 0.95, length: 0.80, overhang: 0.25, noseHeight: 0.82, curve: 0.12, linked: false },
-        cabin: { height: 1.00, length: 1.00 },
-        trunk: { height: 1.00, length: 0.75, overhang: 0.20, tailHeight: 1.04, curve: 0.08, linked: false },
-        rearBumper: { height: 0.70, curve: 0.40, length: 0.25 },
+        frontBumper: { height: 0.90, curve: 0.50, length: 0.50 },
+        hood: { height: 0.95, length: 0.80, overhang: 0.80, noseHeight: 0.90, curve: 0.05, linked: false },
+        cabin: { height: 1.02, length: 1.00 },
+        trunk: { height: 1.00, length: 0.80, overhang: 0.80, tailHeight: 1.00, curve: 0.00, linked: false },
+        rearBumper: { height: 0.90, curve: 0.50, length: 0.50 },
       },
-      glass: { roofCurve: 0.07, opacity: 0.28, roofMetalX: 0.02, roofMetalZ: 0.02 },
-      rim: { style: 'blade', spokes: 6, spokeWidth: 0.085, spokeDepth: 0.03, concavity: 0.025, color: '#0f172a' },
-      tire: { treadStyle: 'sport', bumpScale: 0.12 },
-      headlight: { type: 'matrix', emissiveIntensity: 4.5 },
-      taillight: { type: 'bar', emissiveIntensity: 4.2 },
-      embeds: { grille: { type: 'solid', texture: 'carbon' }, exhaust: { type: 'none' } },
-      interior: { dashboard: 'futuristic', ambientColor: '#06b6d4', leatherColor: '#1e293b' },
+      glass: { roofCurve: 0.06, opacity: 0.30, roofMetalX: 0.10, roofMetalZ: 0.10 },
+      rim: { style: 'mesh', spokes: 8, spokeWidth: 0.07, spokeDepth: 0.03, concavity: 0.02, color: '#f8fafc' },
+      tire: { treadStyle: 'sport', bumpScale: 0.08 },
+      headlight: { type: 'round', emissiveIntensity: 3.5 },
+      taillight: { type: 'round', emissiveIntensity: 3.0 },
+      embeds: { grille: { type: 'bars-h', texture: 'none' }, exhaust: { type: 'none' } },
+      interior: { dashboard: 'minimal', leatherColor: '#27272a', ambientColor: '#f97316' },
+    }
+  },
+  gt4: {
+    name: '4. GT cuatro puertas',
+    desc: 'Cupé de cuatro puertas bajo y ancho, azul metalizado con llantas de cinco radios.',
+    model: 'coupe',
+    config: {
+      paint: { color: '#1e3a8a', type: 'metallic', metalness: 0.85, roughness: 0.18, clearcoat: 1.0 },
+      roofPaint: { color: '#1e3a8a', syncBodyColor: true },
+      frontAxleOffset: 0.0,
+      rearAxleOffset: 0.0,
+      zones: {
+        frontBumper: { height: 0.80, curve: 0.60, length: 1.00 },
+        hood: { height: 0.85, length: 1.10, overhang: 0.80, noseHeight: 0.50, curve: 0.10, linked: false },
+        cabin: { height: 1.04, length: 1.00 },
+        trunk: { height: 0.90, length: 0.95, overhang: 0.90, tailHeight: 0.85, curve: 0.00, linked: false },
+        rearBumper: { height: 0.80, curve: 0.60, length: 1.00 },
+      },
+      glass: { roofCurve: 0.10, opacity: 0.35, roofMetalX: 0.08, roofMetalZ: 0.08 },
+      rim: { style: 'split-5', spokes: 5, spokeWidth: 0.09, spokeDepth: 0.03, concavity: 0.03, color: '#e2e8f0' },
+      tire: { treadStyle: 'sport', bumpScale: 0.11 },
+      headlight: { type: 'matrix', emissiveIntensity: 4.6 },
+      taillight: { type: 'bar', emissiveIntensity: 4.4 },
+      embeds: { grille: { type: 'solid', texture: 'brushedBlack' }, exhaust: { type: 'dual' } },
+      interior: { dashboard: 'sport', leatherColor: '#0f172a', ambientColor: '#3b82f6' },
+    }
+  },
+  mpv: {
+    name: '5. Monovolumen familiar',
+    desc: 'Cabina alta, capó corto y zaga vertical para carga; verde menta con techo blanco.',
+    model: 'limousine',
+    config: {
+      paint: { color: '#86efac', type: 'solid', metalness: 0.10, roughness: 0.40, clearcoat: 0.6 },
+      roofPaint: { color: '#f8fafc', syncBodyColor: false },
+      frontAxleOffset: 0.0,
+      rearAxleOffset: 0.0,
+      zones: {
+        frontBumper: { height: 0.80, curve: 0.40, length: 0.80 },
+        hood: { height: 0.90, length: 0.70, overhang: 0.60, noseHeight: 0.90, curve: 0.00, linked: false },
+        cabin: { height: 1.12, length: 0.98 },
+        trunk: { height: 1.05, length: 1.20, overhang: 1.00, tailHeight: 1.05, curve: 0.00, linked: false },
+        rearBumper: { height: 0.80, curve: 0.40, length: 0.80 },
+      },
+      glass: { roofCurve: 0.02, opacity: 0.35, roofMetalX: 0.10, roofMetalZ: 0.10 },
+      rim: { style: 'blade', spokes: 6, spokeWidth: 0.08, spokeDepth: 0.03, concavity: 0.02, color: '#f8fafc' },
+      tire: { treadStyle: 'sport', bumpScale: 0.09 },
+      headlight: { type: 'round', emissiveIntensity: 3.8 },
+      taillight: { type: 'bar', emissiveIntensity: 3.2 },
+      embeds: { grille: { type: 'bars-h', texture: 'none' }, exhaust: { type: 'none' } },
+      interior: { dashboard: 'minimal', leatherColor: '#334155', ambientColor: '#a3e635' },
     }
   }
 };
@@ -1454,7 +1454,6 @@ function bodyProfilePoints(P){
 
   const hoodSamples = [
     new THREE.Vector2(zF, b),
-    new THREE.Vector2(zF - Math.min(0.05, fOver * 0.3), b),
     new THREE.Vector2(zF - fOver * 0.18 * (1 - fC * 0.25), b + (noseTopY - b) * 0.25 * fH),
     new THREE.Vector2(zF - fOver * 0.35, b + (noseTopY - b) * 0.65 * fH),
     new THREE.Vector2(zF - fOver * 0.55, noseTopY),
@@ -1475,7 +1474,6 @@ function bodyProfilePoints(P){
     new THREE.Vector2(P.trunkRearZ, getTrunkY(P.trunkRearZ)),
     new THREE.Vector2(zR + rOver * 0.40, b + (tailTopY - b) * 0.60 * rH),
     new THREE.Vector2(zR + rOver * 0.20 * (1 - rC * 0.3), b + (tailTopY - b) * 0.20 * rH),
-    new THREE.Vector2(zR + Math.min(0.05, rOver * 0.3), b),
     new THREE.Vector2(zR, b),
   ]);
   const trunkSamples = trunkSpline.getPoints(24 + Math.round(CONFIG.smoothing * 10));
@@ -1488,37 +1486,40 @@ function bodyProfilePoints(P){
     ...trunkSamples,
   ];
 
-  // Los pasos de rueda en el chasis inferior siguen exclusivamente a P.frontAxleZ y P.rearAxleZ
+  // Pasos de rueda: arcos sobre cada eje. Cada arco se recorta entre el habitáculo y el extremo
+  // de la carrocería, y nunca sube por encima de la línea superior: así el contorno no se cruza
   const archR   = P.wheelR * (1.25 + CONFIG.smoothing * 0.06);
   const archTop = P.wheelR * 2.4;
   const STEPS   = 12 + Math.round(CONFIG.smoothing * 16);
 
-  const rearArchStart = Math.max(P.rearAxleZ - archR, zR + 0.02);
-  const rearArchEnd   = Math.min(P.rearAxleZ + archR, P.frontAxleZ - archR - 0.05);
-
-  const bottom = [];
-  bottom.push([rearArchStart, b]);
-  for (let i = 1; i < STEPS; i++){
-    const a = Math.PI * i / STEPS;
-    const zArch = P.rearAxleZ - archR * Math.cos(a);
-    if (zArch >= rearArchStart && zArch <= rearArchEnd){
-      bottom.push([zArch, b + (archTop - b) * Math.sin(a)]);
-    }
+  function archSpan(axleZ, lo, hi, topAt){
+    const a0 = Math.max(axleZ - archR, lo);
+    const a1 = Math.min(axleZ + archR, hi);
+    if (a1 - a0 < 0.05) return null;
+    let top = Infinity;
+    for (let i = 0; i <= STEPS; i++) top = Math.min(top, topAt(a0 + (a1 - a0) * i / STEPS));
+    const yMax = Math.min(archTop, top - 0.03);
+    return yMax > b + 0.05 ? { axleZ, a0, a1, yMax } : null;
   }
-  bottom.push([rearArchEnd, b]);
 
-  const frontArchStart = Math.max(P.frontAxleZ - archR, rearArchEnd + 0.05);
-  const frontArchEnd   = Math.min(P.frontAxleZ + archR, zF - 0.02);
-
-  bottom.push([frontArchStart, b]);
-  for (let i = 1; i < STEPS; i++){
-    const a = Math.PI * i / STEPS;
-    const zArch = P.frontAxleZ - archR * Math.cos(a);
-    if (zArch >= frontArchStart && zArch <= frontArchEnd){
-      bottom.push([zArch, b + (archTop - b) * Math.sin(a)]);
+  function archPoints(span){
+    const pts = [[span.a0, b]];
+    for (let i = 1; i < STEPS; i++){
+      const z = span.a0 + (span.a1 - span.a0) * i / STEPS;
+      const t = (z - span.axleZ) / archR;
+      pts.push([z, b + (span.yMax - b) * Math.sqrt(Math.max(0, 1 - t * t))]);
     }
+    pts.push([span.a1, b]);
+    return pts;
   }
-  bottom.push([frontArchEnd, b]);
+
+  const rearArch  = archSpan(P.rearAxleZ,  zR + 0.02, cR - 0.02, getTrunkY);
+  const frontArch = archSpan(P.frontAxleZ, cF + 0.02, zF - 0.10, getHoodY);
+
+  const bottom = [[zR + 0.02, b]];
+  if (rearArch)  bottom.push(...archPoints(rearArch));
+  if (frontArch) bottom.push(...archPoints(frontArch));
+  bottom.push([zF - 0.02, b]);
 
   const all = [
     ...topSamples.map(v => new THREE.Vector2(v.x, v.y)),
@@ -1670,6 +1671,8 @@ function buildCabin(P){
       }
     }
 
+    // Una sola orientación por triángulo (hacia arriba): con las dos, las normales se anulan y el
+    // reflejo del techo sale en franjas
     const stride = xSegs + 1;
     for (let iz = 0; iz < zSegs; iz++){
       for (let ix = 0; ix < xSegs; ix++){
@@ -1677,8 +1680,6 @@ function buildCabin(P){
         const b = a + 1;
         const c = (iz + 1) * stride + ix;
         const d = c + 1;
-        indices.push(a, b, c);
-        indices.push(b, d, c);
         indices.push(a, c, b);
         indices.push(b, c, d);
       }
@@ -1696,13 +1697,13 @@ function buildCabin(P){
   }
 
   // Chapa metálica del techo usando MAT.roofPaint (color de techo correcto)
-  addCurvedSurface('RoofFront', -oX, oX, gZf, rF, 8, 4, MAT.roofPaint, metalY * 0.5);
-  addCurvedSurface('RoofRear',  -oX, oX, rR, gZr, 8, 4, MAT.roofPaint, metalY * 0.5);
-  addCurvedSurface('RoofSideL', -oX, -gX, gZr, gZf, 4, 8, MAT.roofPaint, metalY * 0.5);
-  addCurvedSurface('RoofSideR',  gX,  oX, gZr, gZf, 4, 8, MAT.roofPaint, metalY * 0.5);
+  addCurvedSurface('RoofFront', -oX, oX, gZf, rF, 16, 6, MAT.roofPaint, metalY * 0.5);
+  addCurvedSurface('RoofRear',  -oX, oX, rR, gZr, 16, 6, MAT.roofPaint, metalY * 0.5);
+  addCurvedSurface('RoofSideL', -oX, -gX, gZr, gZf, 6, 16, MAT.roofPaint, metalY * 0.5);
+  addCurvedSurface('RoofSideR',  gX,  oX, gZr, gZf, 6, 16, MAT.roofPaint, metalY * 0.5);
 
   if (gX > 0.01 && gZf > gZr) {
-    addCurvedSurface('PanoramicRoof', -gX, gX, gZr, gZf, 8, 12, MAT.roofGlass);
+    addCurvedSurface('PanoramicRoof', -gX, gX, gZr, gZf, 12, 16, MAT.roofGlass);
   }
 
   const gw = cw - 0.005;
@@ -1720,8 +1721,6 @@ function buildCabin(P){
     const i0 = ix * 2, i1 = i0 + 1, i2 = (ix + 1) * 2, i3 = i2 + 1;
     wsInd.push(i0, i2, i1);
     wsInd.push(i2, i3, i1);
-    wsInd.push(i0, i1, i2);
-    wsInd.push(i2, i1, i3);
   }
   wsGeo.setAttribute('position', new THREE.Float32BufferAttribute(wsPos, 3));
   wsGeo.setIndex(wsInd);
@@ -1743,8 +1742,6 @@ function buildCabin(P){
     const i0 = ix * 2, i1 = i0 + 1, i2 = (ix + 1) * 2, i3 = i2 + 1;
     rwInd.push(i0, i1, i2);
     rwInd.push(i2, i1, i3);
-    rwInd.push(i0, i2, i1);
-    rwInd.push(i2, i3, i1);
   }
   rwGeo.setAttribute('position', new THREE.Float32BufferAttribute(rwPos, 3));
   rwGeo.setIndex(rwInd);
@@ -2504,7 +2501,7 @@ function buildShowroomCar(presetKey, posX){
 
 function buildShowroom(){
   disposeGroup(showroomGroup);
-  const keys = ['phantom', 'supercar', 'offroad', 'monaco', 'urban'];
+  const keys = ['fastback', 'crossover', 'retro', 'gt4', 'mpv'];
   const spacing = 3.6;
   const startX = -((keys.length - 1) * spacing) / 2;
 
