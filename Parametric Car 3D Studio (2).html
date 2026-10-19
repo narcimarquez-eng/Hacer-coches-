@@ -1,0 +1,2988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Parametric Car Studio — Three.js</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #f0f2f5;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #333;
+  }
+
+  #panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 360px;
+    padding: 14px 12px 40px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    z-index: 10;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(14px);
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+  #panel::-webkit-scrollbar { width: 7px; }
+  #panel::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+
+  #panel header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  #panel h1 {
+    font-size: 14px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #111;
+  }
+  #status {
+    font-size: 11px;
+    font-weight: 600;
+    color: #0055ff;
+  }
+
+  .grp {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .grp:last-child { border-bottom: none; }
+  .grp > label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #555;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { flex: 1; }
+
+  select, button, input[type=range] {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+  select { padding: 6px 8px; cursor: pointer; width: 100%; }
+  select:focus { outline: none; border-color: #0066ff; }
+  button {
+    padding: 8px 10px;
+    cursor: pointer;
+    font-weight: 600;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+  }
+  button:hover { background: #f1f5f9; border-color: #94a3b8; }
+  button:active { transform: translateY(1px); }
+
+  input[type=color] {
+    width: 100%;
+    height: 30px;
+    padding: 2px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 5px;
+    border-radius: 3px;
+    background: #e2e8f0;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #0066ff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    border: none;
+    border-radius: 50%;
+    background: #0066ff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+
+  .sl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 7px;
+  }
+  .sl > span {
+    flex: 0 0 120px;
+    font-size: 11px;
+    color: #4b5563;
+    line-height: 1.2;
+  }
+  .sl > input { flex: 1; }
+  .sl > b {
+    flex: 0 0 44px;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 600;
+    color: #111;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .actions { display: flex; gap: 8px; margin-top: 8px; }
+  .actions button { flex: 1; font-size: 11px; }
+
+  .highlight-btn {
+    background: #0066ff !important;
+    color: #fff !important;
+    border-color: #0052cc !important;
+  }
+  .highlight-btn:hover { background: #0052cc !important; }
+
+  #hint {
+    position: fixed;
+    bottom: 14px;
+    right: 16px;
+    font-size: 11.5px;
+    color: #334155;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    padding: 7px 14px;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <header>
+    <h1>Car Studio 3D</h1>
+    <span id="status">✓ Listo</span>
+  </header>
+
+  <!-- 5 COCHES PREDISEÑADOS Y SHOWROOM -->
+  <div class="grp">
+    <label for="carPresetSelect">✨ Garaje (5 Modelos Prediseñados)</label>
+    <select id="carPresetSelect">
+      <option value="">-- Elige un coche prediseñado --</option>
+      <option value="phantom">👑 1. Phantom V8 Luxury (Capó recto y largo)</option>
+      <option value="supercar">⚡ 2. Cyber Wedge GT (Morro en cuña baja)</option>
+      <option value="offroad">🚙 3. Baja 4x4 Crawler (Sin voladizos & tacos)</option>
+      <option value="monaco">🏎 4. Monaco Grand Tourer (Cupé bitono clásico)</option>
+      <option value="urban">🚀 5. Neon Speedster EV (Compacto futurista)</option>
+    </select>
+    <div style="margin-top:8px">
+      <button id="btnShowroom" class="highlight-btn" style="width:100%">🏢 Modo Showroom (Ver los 5 juntos)</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <label for="model">Tipo de carrocería base</label>
+    <select id="model"></select>
+  </div>
+
+  <div class="grp">
+    <label>Zona seleccionada (clic en el coche)</label>
+    <select id="zoneSelect">
+      <option value="frontBumper">Paragolpes delantero</option>
+      <option value="hood">Capó</option>
+      <option value="cabin">Cabina / puertas</option>
+      <option value="trunk">Maletero</option>
+      <option value="rearBumper">Paragolpes trasero</option>
+    </select>
+    <div id="zoneSliders"></div>
+  </div>
+
+  <div class="grp">
+    <label>Suavizado y Estructura</label>
+    <div class="sl"><span>Suavidad</span><input type="range" id="smoothing" min="0" max="1" step="0.05"><b id="vSmooth"></b></div>
+    <div class="sl"><span>Grosor pilares</span><input type="range" id="pillarThick" min="0.02" max="0.15" step="0.01"><b id="vPThick"></b></div>
+  </div>
+
+  <div class="grp">
+    <label>Pintura de Carrocería</label>
+    <div class="row">
+      <input type="color" id="paintColor" value="#2a2a2a" title="Color Carrocería">
+      <select id="paintType">
+        <option value="metallic">Metallic</option>
+        <option value="solid">Solid</option>
+        <option value="pearl">Pearl</option>
+        <option value="matte">Matte</option>
+      </select>
+    </div>
+    <div class="sl"><span>Metalness</span><input type="range" id="pMetal" min="0" max="1" step="0.01"><b id="vPMetal"></b></div>
+    <div class="sl"><span>Roughness</span><input type="range" id="pRough" min="0" max="1" step="0.01"><b id="vPRough"></b></div>
+    <div class="sl"><span>Clearcoat</span><input type="range" id="pClear" min="0" max="1" step="0.01"><b id="vPClear"></b></div>
+  </div>
+
+  <div class="grp">
+    <label>Techo y Cristales</label>
+    <div class="row">
+      <div>
+        <span style="font-size:10px;color:#666">Color chapa techo:</span>
+        <input type="color" id="roofPaintColor" value="#15171c" title="Color Chapa Techo">
+      </div>
+      <div>
+        <span style="font-size:10px;color:#666">Color cristal:</span>
+        <input type="color" id="glassColor" value="#11161c" title="Color Cristal">
+      </div>
+    </div>
+    <div style="margin-top:6px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#444">
+        <input type="checkbox" id="syncRoofColor">
+        <span>Mismo color de chapa que la carrocería</span>
+      </label>
+    </div>
+    <div class="sl"><span>Opacidad</span><input type="range" id="glassOpacity" min="0" max="1" step="0.01"><b id="vGlass"></b></div>
+    <div class="sl"><span>Base ventanas (Y)</span><input type="range" id="glassBottom" min="0" max="0.28" step="0.005"><b id="vGBottom"></b></div>
+    <div class="sl"><span>Parabrisas (Z)</span><input type="range" id="glassFrontZ" min="0.0" max="1.8" step="0.02"><b id="vGFrontZ"></b></div>
+    <div class="sl"><span>Luneta (Z)</span><input type="range" id="glassRearZ" min="-2.4" max="-0.5" step="0.02"><b id="vGRearZ"></b></div>
+    <div class="sl"><span>Curvatura Techo</span><input type="range" id="roofCurve" min="-0.20" max="0.50" step="0.01"><b id="vRoofCurve"></b></div>
+    <div class="sl"><span>Separación Cristal/Techo</span><input type="range" id="roofGap" min="0.0" max="0.20" step="0.01"><b id="vRoofGap"></b></div>
+    <div class="sl"><span>Mover Techo (Y)</span><input type="range" id="roofYOffset" min="-0.2" max="0.2" step="0.01"><b id="vRoofY"></b></div>
+    <div class="sl"><span>Mover Techo (Z)</span><input type="range" id="roofZOffset" min="-0.5" max="0.5" step="0.01"><b id="vRoofZ"></b></div>
+    <div class="sl"><span>Metal Techo (X)</span><input type="range" id="roofMetalX" min="0" max="0.9" step="0.01"><b id="vRMX"></b></div>
+    <div class="sl"><span>Metal Techo (Z)</span><input type="range" id="roofMetalZ" min="0" max="0.9" step="0.01"><b id="vRMZ"></b></div>
+    <div class="sl"><span>Metal Techo (Grosor Y)</span><input type="range" id="roofMetalY" min="0.01" max="0.10" step="0.005"><b id="vRMY"></b></div>
+  </div>
+
+  <div class="grp">
+    <label>Llantas y Neumáticos</label>
+    <select id="rimStyle">
+      <option value="split-5">Split 5 (Doble radio deportivo)</option>
+      <option value="multi-spoke">Multi-spoke (Multiradio fino)</option>
+      <option value="star-5">Star 5 (Estrella deportiva)</option>
+      <option value="mesh">Mesh (Competición cruzado en Y)</option>
+      <option value="turbine">Turbine (Turbina aerodinámica)</option>
+      <option value="blade">Blade (Aspas deportivas anchas)</option>
+    </select>
+    <div class="sl"><span>Dibujo neumático</span>
+      <select id="tireTreadStyle">
+        <option value="sport">Deportivo calle</option>
+        <option value="racing">Semi-slick circuito</option>
+        <option value="all-terrain">All-Terrain 4x4 (Tacos)</option>
+      </select>
+    </div>
+    <div class="sl"><span>Relieve de goma</span><input type="range" id="tireBump" min="0" max="0.25" step="0.01"><b id="vTireBump"></b></div>
+    <div class="sl"><span>Tamaño llanta</span><input type="range" id="wheelRadius" min="0.70" max="1.50" step="0.01"><b id="vWRadius"></b></div>
+    <div class="sl"><span>Número de radios</span><input type="range" id="rimSpokes" min="3" max="24" step="1"><b id="vSpokes"></b></div>
+    <div class="sl"><span>Anchura radios</span><input type="range" id="spokeWidth" min="0.02" max="0.18" step="0.005"><b id="vSpokeW"></b></div>
+    <div class="sl"><span>Grosor radios (3D)</span><input type="range" id="spokeDepth" min="0.01" max="0.08" step="0.005"><b id="vSpokeD"></b></div>
+    <div class="sl"><span>Concavidad llanta</span><input type="range" id="spokeConcave" min="-0.06" max="0.08" step="0.005"><b id="vSpokeConc"></b></div>
+    <div class="sl"><span>Separación ejes (X)</span><input type="range" id="wheelSpacer" min="0" max="0.22" step="0.01"><b id="vWSpacer"></b></div>
+    <div class="sl"><span>Posición Eje Delantero</span><input type="range" id="frontAxleOffset" min="-1.20" max="1.20" step="0.02"><b id="vAxleF"></b></div>
+    <div class="sl"><span>Posición Eje Trasero</span><input type="range" id="rearAxleOffset" min="-1.20" max="1.20" step="0.02"><b id="vAxleR"></b></div>
+    <div class="row" style="margin-top:7px">
+      <input type="color" id="rimColor" value="#c8c8d0" title="Color de Llanta">
+    </div>
+    <div class="sl"><span>Luz en llantas</span><input type="range" id="wheelLight" min="0" max="5" step="0.1"><b id="vWLight"></b></div>
+  </div>
+
+  <div class="grp">
+    <label>Faros Delanteros</label>
+    <select id="headType">
+      <option value="block">Bloque estándar</option>
+      <option value="matrix">Matriz LED</option>
+      <option value="strip">Tira continua</option>
+      <option value="round">Redondos retro</option>
+      <option value="lens">Lente xenón</option>
+      <option value="quad">Cuádruple</option>
+      <option value="hyper">Hiper deportivo</option>
+      <option value="halo">Halo DRL</option>
+    </select>
+    <div class="sl"><span>Intensidad</span><input type="range" id="headIntensity" min="0" max="8" step="0.1"><b id="vHead"></b></div>
+    <div class="sl"><span>Acercar (Z)</span><input type="range" id="headOffsetZ" min="-0.2" max="0.2" step="0.01"><b id="vHOffZ"></b></div>
+    <div class="sl"><span>Posición Y</span><input type="range" id="headOffsetY" min="-0.3" max="0.3" step="0.01"><b id="vHOffY"></b></div>
+    <div class="sl"><span>Rotación X</span><input type="range" id="headRotX" min="-3.14" max="3.14" step="0.05"><b id="vHRotX"></b></div>
+    <div class="sl"><span>Rotación Y</span><input type="range" id="headRotY" min="-3.14" max="3.14" step="0.05"><b id="vHRotY"></b></div>
+    <div class="sl"><span>Rotación Z</span><input type="range" id="headRotZ" min="-3.14" max="3.14" step="0.05"><b id="vHRotZ"></b></div>
+  </div>
+
+  <div class="grp">
+    <label>Faros Traseros</label>
+    <select id="tailType">
+      <option value="bar">Barra continua LED</option>
+      <option value="split">Divididos</option>
+      <option value="round">Redondos GT</option>
+      <option value="matrix">Matriz</option>
+      <option value="neon">Neón Cyber</option>
+      <option value="block">Bloque estándar</option>
+    </select>
+    <div class="row" style="margin-top:7px">
+      <input type="color" id="tailColor" value="#ff1100" title="Color Luz Trasera">
+    </div>
+    <div class="sl"><span>Intensidad</span><input type="range" id="tailIntensity" min="0" max="8" step="0.1"><b id="vTailInt"></b></div>
+    <div class="sl"><span>Acercar (Z)</span><input type="range" id="tailOffsetZ" min="-0.2" max="0.2" step="0.01"><b id="vTOffZ"></b></div>
+    <div class="sl"><span>Posición Y</span><input type="range" id="tailOffsetY" min="-0.3" max="0.3" step="0.01"><b id="vTOffY"></b></div>
+    <div class="sl"><span>Rotación X</span><input type="range" id="tailRotX" min="-3.14" max="3.14" step="0.05"><b id="vTRotX"></b></div>
+    <div class="sl"><span>Rotación Y</span><input type="range" id="tailRotY" min="-3.14" max="3.14" step="0.05"><b id="vTRotY"></b></div>
+    <div class="sl"><span>Rotación Z</span><input type="range" id="tailRotZ" min="-3.14" max="3.14" step="0.05"><b id="vTRotZ"></b></div>
+  </div>
+
+  <div class="grp">
+    <label>Parrilla Delantera y Embebidos</label>
+    <select id="grilleType">
+      <option value="slats">Lamas verticales</option>
+      <option value="bars-h">Barras horizontales</option>
+      <option value="honeycomb">Panal (honeycomb)</option>
+      <option value="mesh">Malla perforada</option>
+      <option value="solid">Panel liso</option>
+    </select>
+    <select id="grilleTexture" style="margin-top:8px">
+      <option value="honeycomb">Textura panal</option>
+      <option value="perforated">Textura perforada</option>
+      <option value="diamond">Textura diamante</option>
+      <option value="carbon">Textura carbono</option>
+      <option value="brushedBlack">Textura metal cepillado</option>
+      <option value="none">Sin textura</option>
+    </select>
+  </div>
+
+  <div class="grp">
+    <label>Líneas de Diseño</label>
+    <div class="row">
+      <button id="btnToggleLines">Activar/Desactivar Líneas</button>
+    </div>
+    <div class="sl"><span>Grosor línea</span><input type="range" id="lineThick" min="0.005" max="0.10" step="0.005"><b id="vLineThick"></b></div>
+  </div>
+
+  <div class="grp">
+    <label>Interior y Asientos</label>
+    <select id="dashboardType">
+      <option value="sport">Sport (Carbono)</option>
+      <option value="luxury">Luxury (Madera noble)</option>
+      <option value="minimal">Minimalista</option>
+      <option value="futuristic">Futurista</option>
+    </select>
+    <div class="row" style="margin-top:8px">
+      <input type="color" id="leatherColor" value="#241a12" title="Tapicería Asientos">
+      <input type="color" id="woodColor"    value="#4a2810" title="Inserciones Madera">
+      <input type="color" id="ambientColor" value="#0066ff" title="Iluminación Ambiente">
+    </div>
+  </div>
+
+  <div class="grp actions">
+    <button id="btnRandom">🎲 Randomizar</button>
+    <button id="btnReset">↺ Restaurar</button>
+  </div>
+  <div class="grp actions">
+    <button id="btnRotate">⏸ Girar cámara</button>
+    <button id="btnWheels">🔄 Rodar ruedas</button>
+  </div>
+  <div class="grp actions">
+    <button id="btnExport">⬇ Exportar GLB</button>
+  </div>
+</div>
+
+<div id="hint">Orbitar: Arrastrar | Zoom: Rueda | Clic en zona para seleccionar</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }   from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFExporter }    from 'three/addons/exporters/GLTFExporter.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf0f2f5);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(6.2, 3.2, 7.5);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.75, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2.5;
+controls.maxDistance = 45;
+controls.maxPolarAngle = Math.PI / 2.02;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.7;
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x64748b, 1.2);
+scene.add(hemiLight);
+
+const mainSun = new THREE.DirectionalLight(0xffffff, 2.5);
+mainSun.position.set(6, 11, -4);
+mainSun.castShadow = true;
+mainSun.shadow.mapSize.set(2048, 2048);
+Object.assign(mainSun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 0.5, far: 50 });
+mainSun.shadow.bias = -0.0002;
+scene.add(mainSun);
+
+const rimLight = new THREE.DirectionalLight(0xa5c9ff, 1.4);
+rimLight.position.set(-6, 5, 8);
+scene.add(rimLight);
+
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
+fillLight.position.set(-5, 6, -6);
+scene.add(fillLight);
+
+const wheelLightL = new THREE.PointLight(0xfff4e0, 2.5, 6, 2);
+wheelLightL.position.set(-3.2, 1.1, 0);
+scene.add(wheelLightL);
+
+const wheelLightR = new THREE.PointLight(0xfff4e0, 2.5, 6, 2);
+wheelLightR.position.set(3.2, 1.1, 0);
+scene.add(wheelLightR);
+
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(32, 64),
+  new THREE.ShadowMaterial({ opacity: 0.16 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const CONFIG = {
+  model: 'sedan',
+  selectedZone: 'hood',
+  smoothing: 0.35,
+
+  pillars: { thick: 0.06 },
+  designLines: { enabled: true, thickness: 0.015, random: false },
+
+  // Ejes independientes del centro sin alterar el tamaño de la cabina
+  frontAxleOffset: 0.0,
+  rearAxleOffset: 0.0,
+
+  // Capó por defecto reducido y completamente horizontal/recto
+  zones: {
+    frontBumper: { height: 1.00, curve: 0.50, length: 1.00 },
+    hood:        { height: 1.00, length: 0.75, overhang: 0.70, noseHeight: 1.00, curve: 0.0, linked: false },
+    cabin:       { height: 1.00, length: 1.00 },
+    trunk:       { height: 1.00, length: 1.00, overhang: 1.00, tailHeight: 0.90, curve: 0.05, linked: false },
+    rearBumper:  { height: 1.00, curve: 0.50, length: 1.00 },
+  },
+
+  paint: {
+    color: '#2a2a2a',
+    type: 'metallic',
+    metalness: 0.85,
+    roughness: 0.22,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.06,
+  },
+
+  roofPaint: {
+    color: '#15171c',
+    syncBodyColor: false,
+  },
+
+  glass: {
+    color: '#11161c',
+    opacity: 0.35,
+    bottomOffset: 0.05,
+    frontZ: 1.05,
+    rearZ: -1.40,
+    roofFrontZ: 0.55,
+    roofRearZ: -0.85,
+    roofMetalX: 0.06,
+    roofMetalZ: 0.06,
+    roofMetalY: 0.02,
+    roofGap: 0.04,
+    roofYOffset: 0.0,
+    roofZOffset: 0.0,
+    roofCurve: 0.08,
+  },
+
+  tire: {
+    color: '#1b1b1e',
+    roughness: 0.88,
+    size: 1.0,
+    treadStyle: 'sport',
+    bumpScale: 0.12,
+  },
+  wheelSpacer: 0.05,
+  wheelRadius: 1.0,
+  wheelLight: 2.5,
+
+  rim: {
+    color: '#c8c8d0',
+    metalness: 0.82,
+    roughness: 0.24,
+    style: 'split-5',
+    spokes: 10,
+    spokeWidth: 0.06,
+    spokeDepth: 0.025,
+    concavity: 0.02,
+  },
+
+  headlight: {
+    type: 'matrix',
+    color: '#ddeeff',
+    emissiveIntensity: 3.8,
+    temperatureK: 6500,
+    offsetY: 0.0,
+    offsetZ: 0.0,
+    rotX: 0.0,
+    rotY: 0.0,
+    rotZ: 0.0,
+  },
+
+  taillight: {
+    type: 'bar',
+    color: '#ff1100',
+    emissiveIntensity: 3.2,
+    offsetY: 0.0,
+    offsetZ: 0.0,
+    rotX: 0.0,
+    rotY: 0.0,
+    rotZ: 0.0,
+  },
+
+  chrome: { color: '#eaeaf0', roughness: 0.08 },
+
+  embeds: {
+    grille:    { type: 'slats',     protrudeZ: 0.003, texture: 'honeycomb' },
+    headlight: { protrudeZ: 0.0 },
+    taillight: { protrudeZ: 0.0 },
+    handle:    { type: 'chrome',    protrudeX: 0.01 },
+    mirror:    { protrudeX: 0.060 },
+    intake:    { protrudeZ: 0.003 },
+    exhaust:   { type: 'dual',      protrudeZ: 0.015 },
+  },
+
+  interior: {
+    leatherColor: '#241a12',
+    woodColor: '#4a2810',
+    ambientColor: '#0066ff',
+    ambientIntensity: 2.5,
+    dashboard: 'sport',
+  },
+};
+
+const DEFAULTS = JSON.parse(JSON.stringify(CONFIG));
+
+const PAINT_TYPES = {
+  solid:    { metalness: 0.10, roughness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08, flake: false, iridescence: 0.0 },
+  metallic: { metalness: 0.85, roughness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.06, flake: true,  iridescence: 0.0 },
+  pearl:    { metalness: 0.60, roughness: 0.18, clearcoat: 1.0, clearcoatRoughness: 0.04, flake: true,  iridescence: 0.8 },
+  matte:    { metalness: 0.35, roughness: 0.85, clearcoat: 0.0, clearcoatRoughness: 0.60, flake: false, iridescence: 0.0 },
+};
+
+const PRESETS = {
+  sedan: {
+    label: 'Sedán Ejecutivo',
+    length: 5.50, width: 1.92,
+    bottomY: 0.22, beltY: 1.02, roofY: 1.51,
+    wheelR: 0.375, wheelbase: 3.50,
+    cabinFrontZ: 1.05, cabinRearZ: -1.40,
+    roofFrontZ: 0.55, roofRearZ: -0.85,
+    bPillar: true,
+  },
+  suv: {
+    label: 'SUV / 4x4 Off-Road',
+    length: 5.10, width: 2.02,
+    bottomY: 0.32, beltY: 1.15, roofY: 1.76,
+    wheelR: 0.46, wheelbase: 3.00,
+    cabinFrontZ: 1.15, cabinRearZ: -2.00,
+    roofFrontZ: 0.88, roofRearZ: -1.88,
+    bPillar: true,
+  },
+  compact: {
+    label: 'Compacto Deportivo',
+    length: 4.30, width: 1.82,
+    bottomY: 0.20, beltY: 0.95, roofY: 1.45,
+    wheelR: 0.32, wheelbase: 2.60,
+    cabinFrontZ: 0.75, cabinRearZ: -1.55,
+    roofFrontZ: 0.30, roofRearZ: -1.20,
+    bPillar: true,
+  },
+  coupe: {
+    label: 'Cupé GT 2 Puertas',
+    length: 4.85, width: 1.92,
+    bottomY: 0.18, beltY: 0.95, roofY: 1.35,
+    wheelR: 0.34, wheelbase: 2.80,
+    cabinFrontZ: 0.60, cabinRearZ: -1.42,
+    roofFrontZ: 0.10, roofRearZ: -0.98,
+    bPillar: false,
+  },
+  limousine: {
+    label: 'Gran Limusina',
+    length: 6.25, width: 1.96,
+    bottomY: 0.22, beltY: 1.05, roofY: 1.55,
+    wheelR: 0.38, wheelbase: 4.05,
+    cabinFrontZ: 1.30, cabinRearZ: -2.05,
+    roofFrontZ: 0.78, roofRearZ: -1.58,
+    bPillar: true,
+  },
+};
+
+// LOS 5 COCHES DISEÑADOS
+const FIVE_CARS = {
+  phantom: {
+    name: '1. Phantom V8 Luxury',
+    desc: 'Capó recto y largo, techo bitono negro azabache y porte aristocrático.',
+    model: 'limousine',
+    config: {
+      paint: { color: '#0f172a', type: 'metallic', metalness: 0.92, roughness: 0.15, clearcoat: 1.0 },
+      roofPaint: { color: '#05070a', syncBodyColor: false },
+      frontAxleOffset: 0.25,
+      rearAxleOffset: -0.20,
+      zones: {
+        frontBumper: { height: 1.00, curve: 0.30, length: 1.15 },
+        hood: { height: 1.05, length: 1.35, overhang: 1.45, noseHeight: 1.00, curve: 0.0, linked: false },
+        cabin: { height: 1.02, length: 1.00 },
+        trunk: { height: 0.94, length: 0.90, overhang: 1.10, tailHeight: 0.88, curve: -0.04, linked: false },
+        rearBumper: { height: 1.00, curve: 0.45, length: 1.00 },
+      },
+      glass: { roofCurve: 0.04, opacity: 0.40, roofMetalX: 0.10, roofMetalZ: 0.10 },
+      rim: { style: 'turbine', spokes: 14, spokeWidth: 0.055, spokeDepth: 0.025, concavity: 0.02, color: '#e2e8f0' },
+      tire: { treadStyle: 'sport', bumpScale: 0.10 },
+      headlight: { type: 'matrix', emissiveIntensity: 4.2 },
+      taillight: { type: 'bar', emissiveIntensity: 3.5 },
+      embeds: { grille: { type: 'slats', texture: 'brushedBlack' }, exhaust: { type: 'dual' } },
+      interior: { dashboard: 'luxury', leatherColor: '#2b1b11', woodColor: '#4f240e', ambientColor: '#f59e0b' },
+    }
+  },
+  supercar: {
+    name: '2. Cyber Wedge GT',
+    desc: 'Morro en cuña baja, techo en contraste rojo carmesí y perfil superdeportivo.',
+    model: 'coupe',
+    config: {
+      paint: { color: '#d91424', type: 'pearl', metalness: 0.70, roughness: 0.14, clearcoat: 1.0 },
+      roofPaint: { color: '#111317', syncBodyColor: false },
+      frontAxleOffset: 0.16,
+      rearAxleOffset: -0.12,
+      zones: {
+        frontBumper: { height: 0.82, curve: 0.90, length: 0.90 },
+        hood: { height: 0.88, length: 1.15, overhang: 1.10, noseHeight: 0.44, curve: -0.24, linked: false },
+        cabin: { height: 0.92, length: 1.00 },
+        trunk: { height: 1.05, length: 0.82, overhang: 1.25, tailHeight: 1.15, curve: 0.16, linked: false },
+        rearBumper: { height: 1.12, curve: 1.25, length: 1.15 },
+      },
+      glass: { roofCurve: 0.15, opacity: 0.32, roofMetalX: 0.06, roofMetalZ: 0.06 },
+      rim: { style: 'split-5', spokes: 10, spokeWidth: 0.075, spokeDepth: 0.03, concavity: 0.04, color: '#1e293b' },
+      tire: { treadStyle: 'racing', bumpScale: 0.15 },
+      headlight: { type: 'strip', emissiveIntensity: 5.5 },
+      taillight: { type: 'neon', emissiveIntensity: 4.8 },
+      embeds: { grille: { type: 'honeycomb', texture: 'carbon' }, exhaust: { type: 'quad' } },
+      interior: { dashboard: 'sport', leatherColor: '#171717', ambientColor: '#ff0033' },
+    }
+  },
+  offroad: {
+    name: '3. Baja 4x4 Crawler',
+    desc: 'Ejes al extremo de la carrocería, parachoques a cero y ruedas sobreelevadas.',
+    model: 'suv',
+    config: {
+      paint: { color: '#3d4d38', type: 'matte', metalness: 0.20, roughness: 0.85, clearcoat: 0.0 },
+      roofPaint: { color: '#273324', syncBodyColor: false },
+      frontAxleOffset: 0.32,
+      rearAxleOffset: -0.30,
+      wheelRadius: 1.30,
+      wheelSpacer: 0.10,
+      zones: {
+        frontBumper: { height: 0.45, curve: 0.15, length: 0.00 },
+        hood: { height: 1.00, length: 1.02, overhang: 0.00, noseHeight: 0.86, curve: 0.10, linked: false },
+        cabin: { height: 1.08, length: 1.00 },
+        trunk: { height: 1.00, length: 0.95, overhang: 0.00, tailHeight: 0.92, curve: 0.04, linked: false },
+        rearBumper: { height: 0.45, curve: 0.15, length: 0.00 },
+      },
+      glass: { roofCurve: 0.02, opacity: 0.45, roofMetalX: 0.15, roofMetalZ: 0.15 },
+      rim: { style: 'mesh', spokes: 12, spokeWidth: 0.065, spokeDepth: 0.03, concavity: 0.02, color: '#334155' },
+      tire: { treadStyle: 'all-terrain', bumpScale: 0.25 },
+      headlight: { type: 'halo', emissiveIntensity: 4.5 },
+      taillight: { type: 'split', emissiveIntensity: 3.2 },
+      embeds: { grille: { type: 'mesh', texture: 'diamond' }, exhaust: { type: 'dual' } },
+      interior: { dashboard: 'minimal', leatherColor: '#262626', ambientColor: '#eab308' },
+    }
+  },
+  monaco: {
+    name: '4. Monaco Grand Tourer',
+    desc: 'Clásico azul zafiro con techo blanco marfil y elegantes radios de estrella.',
+    model: 'coupe',
+    config: {
+      paint: { color: '#133a75', type: 'metallic', metalness: 0.88, roughness: 0.18, clearcoat: 1.0 },
+      roofPaint: { color: '#f8fafc', syncBodyColor: false },
+      frontAxleOffset: -0.05,
+      rearAxleOffset: 0.08,
+      zones: {
+        frontBumper: { height: 1.00, curve: 0.65, length: 1.10 },
+        hood: { height: 0.98, length: 1.32, overhang: 1.20, noseHeight: 0.84, curve: 0.26, linked: false },
+        cabin: { height: 0.98, length: 1.00 },
+        trunk: { height: 0.92, length: 0.88, overhang: 1.05, tailHeight: 0.80, curve: -0.10, linked: false },
+        rearBumper: { height: 0.95, curve: 0.60, length: 1.05 },
+      },
+      glass: { roofCurve: 0.12, opacity: 0.35, roofMetalX: 0.12, roofMetalZ: 0.12 },
+      rim: { style: 'star-5', spokes: 5, spokeWidth: 0.09, spokeDepth: 0.025, concavity: 0.035, color: '#e2e8f0' },
+      tire: { treadStyle: 'sport', bumpScale: 0.11 },
+      headlight: { type: 'round', emissiveIntensity: 4.0 },
+      taillight: { type: 'round', emissiveIntensity: 3.8 },
+      embeds: { grille: { type: 'slats', texture: 'brushedBlack' }, exhaust: { type: 'dual' } },
+      interior: { dashboard: 'luxury', leatherColor: '#451a03', woodColor: '#78350f', ambientColor: '#38bdf8' },
+    }
+  },
+  urban: {
+    name: '5. Neon Speedster EV',
+    desc: 'Eléctrico ágil en amarillo dorado con techo de cristal panorámico y alerón en cola.',
+    model: 'compact',
+    config: {
+      paint: { color: '#eab308', type: 'metallic', metalness: 0.85, roughness: 0.20, clearcoat: 1.0 },
+      roofPaint: { color: '#0f172a', syncBodyColor: false },
+      frontAxleOffset: -0.12,
+      rearAxleOffset: 0.10,
+      zones: {
+        frontBumper: { height: 0.70, curve: 0.40, length: 0.25 },
+        hood: { height: 0.95, length: 0.80, overhang: 0.25, noseHeight: 0.82, curve: 0.12, linked: false },
+        cabin: { height: 1.00, length: 1.00 },
+        trunk: { height: 1.00, length: 0.75, overhang: 0.20, tailHeight: 1.04, curve: 0.08, linked: false },
+        rearBumper: { height: 0.70, curve: 0.40, length: 0.25 },
+      },
+      glass: { roofCurve: 0.07, opacity: 0.28, roofMetalX: 0.02, roofMetalZ: 0.02 },
+      rim: { style: 'blade', spokes: 6, spokeWidth: 0.085, spokeDepth: 0.03, concavity: 0.025, color: '#0f172a' },
+      tire: { treadStyle: 'sport', bumpScale: 0.12 },
+      headlight: { type: 'matrix', emissiveIntensity: 4.5 },
+      taillight: { type: 'bar', emissiveIntensity: 4.2 },
+      embeds: { grille: { type: 'solid', texture: 'carbon' }, exhaust: { type: 'none' } },
+      interior: { dashboard: 'futuristic', ambientColor: '#06b6d4', leatherColor: '#1e293b' },
+    }
+  }
+};
+
+function derive(base){
+  const P = Object.assign({}, base);
+  const Z = CONFIG.zones;
+
+  P.halfW  = P.width / 2;
+  P.cabinW = P.halfW - 0.15;
+  P.bodyH  = P.beltY - P.bottomY;
+
+  // Referencias base fijas para la carrocería (independientes de los sliders de ejes)
+  const baseFrontAxleZ =  base.wheelbase / 2;
+  const baseRearAxleZ  = -base.wheelbase / 2;
+
+  // Los ejes (ruedas y pasos de rueda) se mueven libremente más cerca o lejos del centro
+  // SIN arrastrar ni modificar el capó, parachoques, maletero ni la cabina:
+  P.frontAxleZ = baseFrontAxleZ + (CONFIG.frontAxleOffset || 0);
+  P.rearAxleZ  = baseRearAxleZ  + (CONFIG.rearAxleOffset  || 0);
+
+  P.wheelX = P.halfW - 0.10 + CONFIG.wheelSpacer;
+  P.wheelR = base.wheelR * CONFIG.wheelRadius;
+  P.tireW  = P.wheelR * 0.72;
+
+  // Los voladizos y extremos del coche (zF y zR) usan la referencia fija base, NO el eje móvil
+  const baseOverhangF = Math.max(0.40, (base.length - base.wheelbase) / 2);
+  const baseOverhangR = Math.max(0.40, (base.length - base.wheelbase) / 2);
+  const hoodOverhang  = (Z.hood.overhang !== undefined) ? Z.hood.overhang : 1.0;
+  const trunkOverhang = (Z.trunk.overhang !== undefined) ? Z.trunk.overhang : 1.0;
+
+  P.frontOverhang = Math.max(0.00, baseOverhangF * Z.frontBumper.length * hoodOverhang);
+  P.rearOverhang  = Math.max(0.00, baseOverhangR * Z.rearBumper.length  * trunkOverhang);
+
+  P.zF = baseFrontAxleZ + P.frontOverhang;
+  P.zR = baseRearAxleZ  - P.rearOverhang;
+
+  // Extensión del capó y maletero hacia la cabina (usando la referencia base fija)
+  const baseHoodSpan  = baseFrontAxleZ - base.cabinFrontZ;
+  const baseTrunkSpan = base.cabinRearZ - baseRearAxleZ;
+
+  const cF0 = baseFrontAxleZ - baseHoodSpan * Z.hood.length;
+  const cR0 = baseRearAxleZ  + baseTrunkSpan * Z.trunk.length;
+
+  const cc = (cF0 + cR0) / 2;
+  const hs = ((cF0 - cR0) / 2) * Z.cabin.length;
+
+  // Aplicamos también el desplazamiento manual de parabrisas (glassFrontZ) y luneta (glassRearZ)
+  const glassFrontDelta = (CONFIG.glass.frontZ !== undefined) ? (CONFIG.glass.frontZ - base.cabinFrontZ) : 0;
+  const glassRearDelta  = (CONFIG.glass.rearZ  !== undefined) ? (CONFIG.glass.rearZ  - base.cabinRearZ)  : 0;
+
+  P.cabinFrontZ = cc + hs + glassFrontDelta;
+  P.cabinRearZ  = cc - hs + glassRearDelta;
+
+  P.beltY = base.beltY;
+  P.frontBeltY = THREE.MathUtils.clamp(
+    base.beltY * Z.hood.height,
+    base.bottomY + 0.15,
+    base.roofY * Z.cabin.height - 0.12
+  );
+  P.rearBeltY = THREE.MathUtils.clamp(
+    base.beltY * Z.trunk.height,
+    base.bottomY + 0.15,
+    base.roofY * Z.cabin.height - 0.12
+  );
+
+  P.roofY = base.roofY * Z.cabin.height;
+
+  // Adaptación armónica del techo a la cabina
+  const baseCabinC    = (base.cabinFrontZ + base.cabinRearZ) / 2;
+  const baseCabinSpan = Math.max(0.1, base.cabinFrontZ - base.cabinRearZ);
+  const curCabinC     = (P.cabinFrontZ + P.cabinRearZ) / 2;
+  const curCabinSpan  = Math.max(0.1, P.cabinFrontZ - P.cabinRearZ);
+  const cabinScale    = curCabinSpan / baseCabinSpan;
+
+  const baseRoofC      = (base.roofFrontZ + base.roofRearZ) / 2;
+  const baseRoofSpan   = base.roofFrontZ - base.roofRearZ;
+  const targetRoofC    = curCabinC + (baseRoofC - baseCabinC) * cabinScale;
+  const targetRoofHalf = (baseRoofSpan * cabinScale) / 2;
+
+  P.roofFrontZ = targetRoofC + targetRoofHalf + CONFIG.glass.roofZOffset;
+  P.roofRearZ  = targetRoofC - targetRoofHalf + CONFIG.glass.roofZOffset;
+  P.roofY      = P.roofY + CONFIG.glass.roofYOffset;
+
+  // Límites geométricos seguros
+  P.cabinFrontZ = Math.min(P.cabinFrontZ, P.zF - 0.10);
+  P.cabinRearZ  = Math.max(P.cabinRearZ,  P.zR + 0.10);
+  P.roofFrontZ  = Math.max(P.cabinRearZ + 0.05, Math.min(P.roofFrontZ, P.cabinFrontZ - 0.05));
+  P.roofRearZ   = Math.max(P.cabinRearZ + 0.03, Math.min(P.roofRearZ,  P.roofFrontZ - 0.05));
+
+  const b = P.bottomY;
+  const hoodNoseH  = (Z.hood.noseHeight !== undefined) ? Z.hood.noseHeight : 1.0;
+  const trunkTailH = (Z.trunk.tailHeight !== undefined) ? Z.trunk.tailHeight : 0.90;
+  P.noseTopY = b + (P.frontBeltY - b) * hoodNoseH;
+  P.tailTopY = b + (P.rearBeltY - b) * trunkTailH;
+
+  P.surfaceZf = P.zF - 0.02;
+  P.surfaceZr = P.zR + 0.02;
+  P.surfaceX  = P.halfW - 0.01;
+
+  return P;
+}
+
+const TEXTURES = (() => {
+  const cache = new Map();
+  const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+
+  function make(key, builder, repeat = [1, 1]){
+    if (cache.has(key)) return cache.get(key);
+    const tex = new THREE.CanvasTexture(builder());
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeat[0], repeat[1]);
+    tex.anisotropy = 4;
+    cache.set(key, tex);
+    return tex;
+  }
+
+  function metalFlake(){
+    return make('flake', () => {
+      const S = 256, c = canvas(S, S), x = c.getContext('2d');
+      x.fillStyle = '#e0e0e0'; x.fillRect(0, 0, S, S);
+      for (let i = 0; i < 7000; i++){
+        const g = 150 + (Math.random() * 105 | 0);
+        x.fillStyle = `rgb(${g},${g},${g})`;
+        x.fillRect(Math.random() * S, Math.random() * S, 1 + Math.random(), 1 + Math.random());
+      }
+      return c;
+    }, [8, 8]);
+  }
+
+  function carbonWeave(){
+    return make('carbon', () => {
+      const S = 128, cell = 16, c = canvas(S, S), x = c.getContext('2d');
+      x.fillStyle = '#18181b'; x.fillRect(0, 0, S, S);
+      for (let j = 0; j < S / cell; j++) for (let i = 0; i < S / cell; i++){
+        const horiz = ((i + j) % 4) < 2;
+        x.fillStyle = horiz ? '#3f3f46' : '#27272a';
+        x.fillRect(i * cell, j * cell, cell, cell);
+      }
+      return c;
+    }, [6, 6]);
+  }
+
+  function woodGrain(){
+    return make('wood', () => {
+      const W = 512, H = 128, c = canvas(W, H), x = c.getContext('2d');
+      x.fillStyle = '#cbd5e1'; x.fillRect(0, 0, W, H);
+      for (let i = 0; i < 80; i++){
+        const y0 = Math.random() * H, amp = 1.5 + Math.random() * 6;
+        const freq = 0.008 + Math.random() * 0.02, alpha = 0.04 + Math.random() * 0.12;
+        x.strokeStyle = `rgba(0,0,0,${alpha})`;
+        x.lineWidth = 0.8 + Math.random() * 2;
+        x.beginPath();
+        for (let px = 0; px <= W; px += 4){
+          const y = y0 + Math.sin(px * freq + i * 1.5) * amp;
+          px === 0 ? x.moveTo(px, y) : x.lineTo(px, y);
+        }
+        x.stroke();
+      }
+      return c;
+    }, [3, 1]);
+  }
+
+  function quiltedLeather(){
+    return make('leather', () => {
+      const S = 256, cell = 64, c = canvas(S, S), x = c.getContext('2d');
+      x.fillStyle = '#e2e8f0'; x.fillRect(0, 0, S, S);
+      for (let j = -1; j <= S / cell; j++) for (let i = -1; i <= S / cell; i++){
+        const cx = i * cell + (j % 2 ? cell / 2 : 0), cy = j * cell;
+        x.save(); x.translate(cx, cy); x.rotate(Math.PI / 4);
+        x.fillStyle = 'rgba(210,210,210,.45)'; x.fillRect(-cell*0.33, -cell*0.33, cell*0.66, cell*0.66);
+        x.strokeStyle = 'rgba(40,40,40,.45)'; x.lineWidth = 1.8;
+        x.strokeRect(-cell*0.33, -cell*0.33, cell*0.66, cell*0.66);
+        x.restore();
+      }
+      return c;
+    }, [3, 3]);
+  }
+
+  function honeycomb(){
+    return make('honeycomb', () => {
+      const S = 256, c = canvas(S, S), x = c.getContext('2d');
+      x.fillStyle = '#0a0a0a'; x.fillRect(0, 0, S, S);
+      const cell = 26;
+      x.strokeStyle = '#5a5a5a'; x.lineWidth = 2;
+      for (let j = -1; j < S / (cell * 0.866) + 2; j++){
+        for (let i = -1; i < S / cell + 2; i++){
+          const cx = i * cell + (j % 2 ? cell / 2 : 0);
+          const cy = j * cell * 0.866;
+          x.beginPath();
+          for (let k = 0; k < 6; k++){
+            const a = Math.PI / 6 + k * Math.PI / 3;
+            const px = cx + Math.cos(a) * cell * 0.5;
+            const py = cy + Math.sin(a) * cell * 0.5;
+            k === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+          }
+          x.closePath(); x.stroke();
+        }
+      }
+      return c;
+    }, [3, 3]);
+  }
+
+  function perforated(){
+    return make('perforated', () => {
+      const S = 128, cell = 16, c = canvas(S, S), x = c.getContext('2d');
+      x.fillStyle = '#888'; x.fillRect(0, 0, S, S);
+      x.fillStyle = '#1a1a1a';
+      for (let j = 0; j < S / cell; j++){
+        for (let i = 0; i < S / cell; i++){
+          const cx = i * cell + (j % 2 ? cell / 2 : 0) + cell / 2;
+          const cy = j * cell + cell / 2;
+          x.beginPath();
+          x.arc(cx, cy, cell * 0.30, 0, Math.PI * 2);
+          x.fill();
+        }
+      }
+      return c;
+    }, [6, 6]);
+  }
+
+  function diamondPlate(){
+    return make('diamond', () => {
+      const S = 128, c = canvas(S, S), x = c.getContext('2d');
+      x.fillStyle = '#2e2e2e'; x.fillRect(0, 0, S, S);
+      x.fillStyle = '#7a7a7a';
+      for (let j = 0; j < 8; j++){
+        for (let i = 0; i < 8; i++){
+          const cx = i * 16 + (j % 2 ? 8 : 0);
+          const cy = j * 16;
+          x.save(); x.translate(cx, cy); x.rotate(Math.PI / 4);
+          x.fillRect(-4, -1.5, 8, 3);
+          x.restore();
+        }
+      }
+      return c;
+    }, [6, 6]);
+  }
+
+  function brushedBlack(){
+    return make('brushedBlack', () => {
+      const S = 256, c = canvas(S, S), x = c.getContext('2d');
+      x.fillStyle = '#2a2a2a'; x.fillRect(0, 0, S, S);
+      for (let i = 0; i < 2600; i++){
+        const y = Math.random() * S, g = 30 + (Math.random() * 50 | 0);
+        x.strokeStyle = `rgba(${g},${g},${g},.6)`;
+        x.lineWidth = Math.random() * 1.6;
+        x.beginPath(); x.moveTo(0, y); x.lineTo(S, y + (Math.random() - 0.5) * 1.5); x.stroke();
+      }
+      return c;
+    }, [4, 4]);
+  }
+
+  const tireCache = new Map();
+  function getTire(style = 'sport'){
+    if (tireCache.has(style)) return tireCache.get(style);
+    const W = 1024, H = 256;
+    const cColor = canvas(W, H), ctxColor = cColor.getContext('2d');
+    const cBump = canvas(W, H), ctxBump = cBump.getContext('2d');
+
+    ctxColor.fillStyle = '#1c1c1f'; ctxColor.fillRect(0, 0, W, H);
+    ctxBump.fillStyle = '#ffffff';  ctxBump.fillRect(0, 0, W, H);
+
+    if (style === 'sport'){
+      for (const ch of [42, 90, 166, 214]){
+        ctxBump.fillStyle = '#000000'; ctxBump.fillRect(0, ch - 7, W, 14);
+        ctxColor.fillStyle = '#0b0b0d'; ctxColor.fillRect(0, ch - 6, W, 12);
+      }
+      const nSteps = 36, stepW = W / nSteps;
+      ctxBump.strokeStyle = '#000000'; ctxBump.lineWidth = 5;
+      ctxColor.strokeStyle = '#0a0a0c'; ctxColor.lineWidth = 4;
+      for (let i = 0; i < nSteps; i++){
+        const x0 = i * stepW;
+        ctxBump.beginPath(); ctxColor.beginPath();
+        ctxBump.moveTo(x0, 0); ctxBump.lineTo(x0 + 18, 42);
+        ctxColor.moveTo(x0, 0); ctxColor.lineTo(x0 + 18, 42);
+        ctxBump.stroke(); ctxColor.stroke();
+
+        ctxBump.beginPath(); ctxColor.beginPath();
+        ctxBump.moveTo(x0 + 18, 214); ctxBump.lineTo(x0, 256);
+        ctxColor.moveTo(x0 + 18, 214); ctxColor.lineTo(x0, 256);
+        ctxBump.stroke(); ctxColor.stroke();
+
+        ctxBump.beginPath(); ctxColor.beginPath();
+        ctxBump.moveTo(x0 + 8, 45); ctxBump.lineTo(x0 + 26, 128);
+        ctxColor.moveTo(x0 + 8, 45); ctxColor.lineTo(x0 + 26, 128);
+        ctxBump.stroke(); ctxColor.stroke();
+
+        ctxBump.beginPath(); ctxColor.beginPath();
+        ctxBump.moveTo(x0 + 26, 128); ctxBump.lineTo(x0 + 8, 210);
+        ctxColor.moveTo(x0 + 26, 128); ctxColor.lineTo(x0 + 8, 210);
+        ctxBump.stroke(); ctxColor.stroke();
+      }
+    } else if (style === 'racing'){
+      for (const ch of [85, 170]){
+        ctxBump.fillStyle = '#000000'; ctxBump.fillRect(0, ch - 8, W, 16);
+        ctxColor.fillStyle = '#0a0a0c'; ctxColor.fillRect(0, ch - 7, W, 14);
+      }
+      const nSteps = 24, stepW = W / nSteps;
+      ctxBump.strokeStyle = '#000000'; ctxBump.lineWidth = 6;
+      ctxColor.strokeStyle = '#0a0a0c'; ctxColor.lineWidth = 5;
+      for (let i = 0; i < nSteps; i++){
+        const x0 = i * stepW;
+        ctxBump.beginPath(); ctxColor.beginPath();
+        ctxBump.moveTo(x0, 16); ctxBump.lineTo(x0 + 28, 80);
+        ctxColor.moveTo(x0, 16); ctxColor.lineTo(x0 + 28, 80);
+        ctxBump.stroke(); ctxColor.stroke();
+        ctxBump.beginPath(); ctxColor.beginPath();
+        ctxBump.moveTo(x0 + 28, 175); ctxBump.lineTo(x0, 240);
+        ctxColor.moveTo(x0 + 28, 175); ctxColor.lineTo(x0, 240);
+        ctxBump.stroke(); ctxColor.stroke();
+      }
+    } else if (style === 'all-terrain'){
+      ctxBump.fillStyle = '#000000'; ctxBump.fillRect(0, 120, W, 16);
+      ctxColor.fillStyle = '#0a0a0c'; ctxColor.fillRect(0, 121, W, 14);
+      const nSteps = 20, stepW = W / nSteps;
+      ctxBump.fillStyle = '#000000'; ctxColor.fillStyle = '#08080a';
+      for (let i = 0; i < nSteps; i++){
+        const x0 = i * stepW;
+        ctxBump.fillRect(x0, 0, 16, 115); ctxColor.fillRect(x0, 0, 16, 115);
+        ctxBump.fillRect(x0 + stepW/2, 141, 16, 115); ctxColor.fillRect(x0 + stepW/2, 141, 16, 115);
+      }
+    }
+    const texColor = new THREE.CanvasTexture(cColor);
+    texColor.wrapS = texColor.wrapT = THREE.RepeatWrapping;
+    texColor.repeat.set(4, 1);
+    texColor.anisotropy = 4;
+    const texBump = new THREE.CanvasTexture(cBump);
+    texBump.wrapS = texBump.wrapT = THREE.RepeatWrapping;
+    texBump.repeat.set(4, 1);
+    texBump.anisotropy = 4;
+    const res = { color: texColor, bump: texBump };
+    tireCache.set(style, res);
+    return res;
+  }
+
+  return {
+    metalFlake, carbonWeave, woodGrain, quiltedLeather, honeycomb, perforated, diamondPlate, brushedBlack, getTire,
+    byName(name){
+      switch (name){
+        case 'honeycomb':    return honeycomb();
+        case 'perforated':   return perforated();
+        case 'diamond':      return diamondPlate();
+        case 'carbon':       return carbonWeave();
+        case 'brushedBlack': return brushedBlack();
+        default:             return null;
+      }
+    }
+  };
+})();
+
+const MAT = {};
+
+function kelvinToColor(k){
+  const clamp01 = v => Math.min(1, Math.max(0, v));
+  const t = Math.min(12000, Math.max(1000, k)) / 100;
+  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661
+                    : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+  const b = t >= 66 ? 255 : (t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307);
+  return new THREE.Color().setRGB(clamp01(r/255), clamp01(g/255), clamp01(b/255), THREE.SRGBColorSpace);
+}
+
+function createMaterials(){
+  MAT.paint = new THREE.MeshPhysicalMaterial({
+    color: 0x2a2a2a, metalness: 0.85, roughness: 0.22,
+    clearcoat: 1.0, clearcoatRoughness: 0.06,
+  });
+
+  // Material dedicado para el techo (bitono o sincronizado)
+  MAT.roofPaint = new THREE.MeshPhysicalMaterial({
+    color: 0x15171c, metalness: 0.85, roughness: 0.22,
+    clearcoat: 1.0, clearcoatRoughness: 0.06,
+  });
+
+  MAT.chrome = new THREE.MeshStandardMaterial({ color: 0xe8e8ee, metalness: 1.0, roughness: 0.06 });
+  MAT.glass  = new THREE.MeshPhysicalMaterial({
+    color: 0x11161c, metalness: 0.0, roughness: 0.05,
+    transparent: true, opacity: 0.35, side: THREE.DoubleSide, envMapIntensity: 2.0, depthWrite: false,
+  });
+  MAT.roofGlass = new THREE.MeshPhysicalMaterial({
+    color: 0x0a0d10, metalness: 0.0, roughness: 0.03,
+    transparent: true, opacity: 0.45, side: THREE.DoubleSide, envMapIntensity: 2.0, depthWrite: false,
+  });
+
+  MAT.tire    = new THREE.MeshStandardMaterial({ color: 0x1c1c1f, roughness: 0.88 });
+  MAT.rim     = new THREE.MeshStandardMaterial({ color: 0xc4c4cc, metalness: 0.8, roughness: 0.25 });
+  MAT.barrel  = new THREE.MeshStandardMaterial({ color: 0x111215, roughness: 0.82, metalness: 0.4 });
+  MAT.brake   = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.4 });
+  MAT.caliper = new THREE.MeshStandardMaterial({ color: 0xcc1100, metalness: 0.3, roughness: 0.3 });
+
+  MAT.leather = new THREE.MeshStandardMaterial({ color: 0x241a12, roughness: 0.60 });
+  MAT.dash    = new THREE.MeshStandardMaterial({ color: 0x0f0c0a, roughness: 0.55 });
+  MAT.wood    = new THREE.MeshStandardMaterial({ color: 0x4a2810, roughness: 0.22, metalness: 0.05 });
+  MAT.carbon  = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, metalness: 0.55, roughness: 0.25 });
+
+  MAT.headlight = new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0x88bbff, emissiveIntensity: 3.5 });
+  MAT.taillight = new THREE.MeshStandardMaterial({ color: 0xff1000, emissive: 0xff1000, emissiveIntensity: 2.8 });
+  MAT.ambient   = new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 2.5 });
+  MAT.screen    = new THREE.MeshStandardMaterial({ color: 0x081030, emissive: 0x2255cc, emissiveIntensity: 1.5 });
+  MAT.hologram  = new THREE.MeshStandardMaterial({ color: 0x1a4488, emissive: 0x44aaff, emissiveIntensity: 2.0, transparent: true, opacity: 0.7 });
+  MAT.analog    = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.9, roughness: 0.15 });
+
+  MAT.panelGap   = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.2 });
+  MAT.grilleBase = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.5, metalness: 0.6 });
+  MAT.floor      = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.85 });
+
+  MAT.carbon.map  = TEXTURES.carbonWeave();
+  MAT.wood.map    = TEXTURES.woodGrain();
+  MAT.wood.roughnessMap = MAT.wood.map;
+  MAT.leather.map = TEXTURES.quiltedLeather();
+  MAT.leather.bumpMap   = MAT.leather.map;
+  MAT.leather.bumpScale = 0.012;
+
+  const tTex = TEXTURES.getTire('sport');
+  MAT.tire.map = tTex.color;
+  MAT.tire.bumpMap = tTex.bump;
+  MAT.tire.bumpScale = CONFIG.tire.bumpScale;
+}
+
+function updateMaterials(){
+  const C = CONFIG;
+
+  const p = C.paint;
+  const pt = PAINT_TYPES[p.type] || PAINT_TYPES.metallic;
+  MAT.paint.color.set(p.color);
+  MAT.paint.metalness = p.metalness;
+  MAT.paint.roughness = p.roughness;
+  MAT.paint.clearcoat = p.clearcoat;
+  MAT.paint.clearcoatRoughness = p.clearcoatRoughness;
+  MAT.paint.iridescence = pt.iridescence;
+  MAT.paint.iridescenceIOR = 1.35;
+  MAT.paint.roughnessMap = pt.flake ? TEXTURES.metalFlake() : null;
+  MAT.paint.needsUpdate = true;
+
+  // Color de chapa de techo (independiente o sincronizado)
+  const roofColor = C.roofPaint.syncBodyColor ? p.color : C.roofPaint.color;
+  MAT.roofPaint.color.set(roofColor);
+  MAT.roofPaint.metalness = p.metalness;
+  MAT.roofPaint.roughness = p.roughness;
+  MAT.roofPaint.clearcoat = p.clearcoat;
+  MAT.roofPaint.clearcoatRoughness = p.clearcoatRoughness;
+  MAT.roofPaint.iridescence = pt.iridescence;
+  MAT.roofPaint.iridescenceIOR = 1.35;
+  MAT.roofPaint.roughnessMap = pt.flake ? TEXTURES.metalFlake() : null;
+  MAT.roofPaint.needsUpdate = true;
+
+  // Cristales
+  MAT.glass.color.set(C.glass.color);
+  MAT.glass.opacity = C.glass.opacity;
+  MAT.glass.roughness = 0.05;
+  MAT.glass.needsUpdate = true;
+
+  MAT.roofGlass.color.set(C.glass.color);
+  MAT.roofGlass.opacity = Math.min(1.0, C.glass.opacity + 0.13);
+  MAT.roofGlass.needsUpdate = true;
+
+  // Llantas
+  MAT.rim.color.set(C.rim.color);
+  MAT.rim.metalness = C.rim.metalness;
+  MAT.rim.roughness = C.rim.roughness;
+  MAT.rim.needsUpdate = true;
+
+  const tTex = TEXTURES.getTire(C.tire.treadStyle);
+  MAT.tire.map = tTex.color;
+  MAT.tire.bumpMap = tTex.bump;
+  MAT.tire.bumpScale = C.tire.bumpScale;
+  MAT.tire.needsUpdate = true;
+
+  // Luces
+  MAT.headlight.color.set(C.headlight.color);
+  MAT.headlight.emissive.copy(kelvinToColor(C.headlight.temperatureK || 6500));
+  MAT.headlight.emissiveIntensity = C.headlight.emissiveIntensity;
+
+  MAT.taillight.color.set(C.taillight.color);
+  MAT.taillight.emissive.set(C.taillight.color);
+  MAT.taillight.emissiveIntensity = C.taillight.emissiveIntensity;
+
+  MAT.chrome.color.set(C.chrome.color);
+  MAT.chrome.roughness = C.chrome.roughness;
+
+  // Parrilla
+  const gt = CONFIG.embeds.grille.texture;
+  MAT.grilleBase.map = gt === 'none' ? null : TEXTURES.byName(gt);
+  MAT.grilleBase.needsUpdate = true;
+
+  // Interior
+  MAT.leather.color.set(C.interior.leatherColor);
+  MAT.wood.color.set(C.interior.woodColor);
+  MAT.ambient.color.set(C.interior.ambientColor);
+  MAT.ambient.emissive.set(C.interior.ambientColor);
+  MAT.ambient.emissiveIntensity = C.interior.ambientIntensity;
+
+  wheelLightL.intensity = C.wheelLight;
+  wheelLightR.intensity = C.wheelLight;
+}
+
+function addBox(parent, name, size, pos, mat, rot){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), mat);
+  m.position.set(pos[0], pos[1], pos[2]);
+  if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+  m.name = name;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+function addQuad(parent, name, corners, mat){
+  const [a, b, c, d] = corners;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    ...a, ...b, ...c, ...a, ...c, ...d,
+  ]), 3));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat);
+  m.name = name;
+  parent.add(m);
+  return m;
+}
+
+function addPillar(parent, name, x, y1, z1, y2, z2, thick, mat = MAT.paint){
+  const L = Math.hypot(y2 - y1, z2 - z1);
+  const ang = Math.atan2(-(y2 - y1), z2 - z1);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.06, thick, L), mat);
+  m.position.set(x, (y1 + y2) / 2, (z1 + z2) / 2);
+  m.rotation.x = ang;
+  m.name = name;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+function addPanelGap(parent, name, size, pos, rot){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), MAT.panelGap);
+  m.position.set(pos[0], pos[1], pos[2]);
+  if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+  m.name = name;
+  m.castShadow = false;
+  parent.add(m);
+  return m;
+}
+
+function addCyl(parent, name, radius, height, pos, mat, rot){
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 16), mat);
+  m.position.set(pos[0], pos[1], pos[2]);
+  if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+  m.name = name;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+const EMBED_DEPTH = 0.15;
+function embedBox(parent, name, size, surfacePos, axisSign, protrusion, mat, rot){
+  let axisIdx = 0;
+  if      (axisSign[0] !== 0) axisIdx = 0;
+  else if (axisSign[1] !== 0) axisIdx = 1;
+  else                        axisIdx = 2;
+
+  const dim = size.slice();
+  dim[axisIdx] = EMBED_DEPTH + protrusion;
+  const pos = surfacePos.slice();
+  pos[axisIdx] += Math.sign(axisSign[axisIdx]) * (protrusion - EMBED_DEPTH) / 2;
+
+  const m = new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mat);
+  m.position.set(pos[0], pos[1], pos[2]);
+  if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+  m.name = name;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+function embedCylinder(parent, name, radius, surfacePos, axisSign, protrusion, mat, rot){
+  let axisIdx = 0;
+  if      (axisSign[0] !== 0) axisIdx = 0;
+  else if (axisSign[1] !== 0) axisIdx = 1;
+  else                        axisIdx = 2;
+
+  const totalLen = EMBED_DEPTH + protrusion;
+  const pos = surfacePos.slice();
+  pos[axisIdx] += Math.sign(axisSign[axisIdx]) * (protrusion - EMBED_DEPTH) / 2;
+
+  const geo = new THREE.CylinderGeometry(radius, radius, totalLen, 24);
+  const m = new THREE.Mesh(geo, mat);
+  if (axisIdx === 0) m.rotation.z = Math.PI / 2;
+  if (axisIdx === 2) m.rotation.x = Math.PI / 2;
+  if (rot) { m.rotation.x += rot[0]; m.rotation.y += rot[1]; m.rotation.z += rot[2]; }
+  m.position.set(pos[0], pos[1], pos[2]);
+  m.name = name;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+function chaikinClosed(points, iterations){
+  let cur = points;
+  for (let it = 0; it < iterations; it++){
+    const next = [];
+    const n = cur.length;
+    for (let i = 0; i < n; i++){
+      const p0 = cur[i];
+      const p1 = cur[(i + 1) % n];
+      next.push(new THREE.Vector2(0.75*p0.x + 0.25*p1.x, 0.75*p0.y + 0.25*p1.y));
+      next.push(new THREE.Vector2(0.25*p0.x + 0.75*p1.x, 0.25*p0.y + 0.75*p1.y));
+    }
+    cur = next;
+  }
+  return cur;
+}
+
+function bodyProfilePoints(P){
+  const zF = P.zF, zR = P.zR;
+  const b  = P.bottomY;
+  const fB = P.frontBeltY;
+  const rB = P.rearBeltY;
+  const cF = P.cabinFrontZ, cR = P.cabinRearZ;
+
+  // Referencia de perfil para el capó y maletero completamente independiente de los ejes
+  const fH = CONFIG.zones.frontBumper.height;
+  const fC = CONFIG.zones.frontBumper.curve;
+  const rH = CONFIG.zones.rearBumper.height;
+  const rC = CONFIG.zones.rearBumper.curve;
+
+  const hoodSpan  = Math.max(0.05, zF - cF);
+  const trunkSpan = Math.max(0.05, cR - zR);
+
+  // Curva de morro y zaga independientes de los ejes
+  const fOver = Math.max(0.08, Math.min(hoodSpan * 0.45, P.frontOverhang));
+  const rOver = Math.max(0.08, Math.min(trunkSpan * 0.45, P.rearOverhang));
+
+  function getHoodY(z){
+    const t = THREE.MathUtils.clamp((z - cF) / hoodSpan, 0, 1);
+    const targetNoseY = b + (fB - b) * (CONFIG.zones.hood.noseHeight !== undefined ? CONFIG.zones.hood.noseHeight : 1.0);
+    const linearY = THREE.MathUtils.lerp(fB, targetNoseY, t);
+    const bulge = 4 * t * (1 - t) * (CONFIG.zones.hood.curve || 0) * (fB - b) * 0.35;
+    return linearY + bulge;
+  }
+
+  function getTrunkY(z){
+    const t = THREE.MathUtils.clamp((cR - z) / trunkSpan, 0, 1);
+    const targetTailY = b + (rB - b) * CONFIG.zones.trunk.tailHeight;
+    const linearY = THREE.MathUtils.lerp(rB, targetTailY, t);
+    const bulge = 4 * t * (1 - t) * (CONFIG.zones.trunk.curve || 0) * (rB - b) * 0.35;
+    return linearY + bulge;
+  }
+
+  const noseTopY = getHoodY(zF - 0.02);
+  const tailTopY = getTrunkY(zR + 0.02);
+
+  // Puntos del capó distribuidos a lo largo de hoodSpan (100% independientes del eje delantero)
+  const zHood1 = cF + hoodSpan * 0.33;
+  const zHood2 = cF + hoodSpan * 0.66;
+
+  const hoodSamples = [
+    new THREE.Vector2(zF, b),
+    new THREE.Vector2(zF - Math.min(0.05, fOver * 0.3), b),
+    new THREE.Vector2(zF - fOver * 0.18 * (1 - fC * 0.25), b + (noseTopY - b) * 0.25 * fH),
+    new THREE.Vector2(zF - fOver * 0.35, b + (noseTopY - b) * 0.65 * fH),
+    new THREE.Vector2(zF - fOver * 0.55, noseTopY),
+    new THREE.Vector2(zHood2, getHoodY(zHood2)),
+    new THREE.Vector2(zHood1, getHoodY(zHood1)),
+    new THREE.Vector2(cF, fB),
+  ];
+
+  // Puntos del maletero distribuidos a lo largo de trunkSpan (100% independientes del eje trasero)
+  const zTrunk1 = cR - trunkSpan * 0.33;
+  const zTrunk2 = cR - trunkSpan * 0.66;
+
+  const trunkSpline = new THREE.SplineCurve([
+    new THREE.Vector2(cR, rB),
+    new THREE.Vector2(zTrunk1, getTrunkY(zTrunk1)),
+    new THREE.Vector2(zTrunk2, getTrunkY(zTrunk2)),
+    new THREE.Vector2(zR + rOver * 0.40, b + (tailTopY - b) * 0.60 * rH),
+    new THREE.Vector2(zR + rOver * 0.20 * (1 - rC * 0.3), b + (tailTopY - b) * 0.20 * rH),
+    new THREE.Vector2(zR + Math.min(0.05, rOver * 0.3), b),
+    new THREE.Vector2(zR, b),
+  ]);
+  const trunkSamples = trunkSpline.getPoints(24 + Math.round(CONFIG.smoothing * 10));
+
+  const cabinFloorY = b + 0.04;
+  const topSamples = [
+    ...hoodSamples,
+    new THREE.Vector2(cF - 0.015, cabinFloorY),
+    new THREE.Vector2(cR + 0.015, cabinFloorY),
+    ...trunkSamples,
+  ];
+
+  // Los pasos de rueda en el chasis inferior siguen exclusivamente a P.frontAxleZ y P.rearAxleZ
+  const archR   = P.wheelR * (1.25 + CONFIG.smoothing * 0.06);
+  const archTop = P.wheelR * 2.4;
+  const STEPS   = 12 + Math.round(CONFIG.smoothing * 16);
+
+  const rearArchStart = Math.max(P.rearAxleZ - archR, zR + 0.02);
+  const rearArchEnd   = Math.min(P.rearAxleZ + archR, P.frontAxleZ - archR - 0.05);
+
+  const bottom = [];
+  bottom.push([rearArchStart, b]);
+  for (let i = 1; i < STEPS; i++){
+    const a = Math.PI * i / STEPS;
+    const zArch = P.rearAxleZ - archR * Math.cos(a);
+    if (zArch >= rearArchStart && zArch <= rearArchEnd){
+      bottom.push([zArch, b + (archTop - b) * Math.sin(a)]);
+    }
+  }
+  bottom.push([rearArchEnd, b]);
+
+  const frontArchStart = Math.max(P.frontAxleZ - archR, rearArchEnd + 0.05);
+  const frontArchEnd   = Math.min(P.frontAxleZ + archR, zF - 0.02);
+
+  bottom.push([frontArchStart, b]);
+  for (let i = 1; i < STEPS; i++){
+    const a = Math.PI * i / STEPS;
+    const zArch = P.frontAxleZ - archR * Math.cos(a);
+    if (zArch >= frontArchStart && zArch <= frontArchEnd){
+      bottom.push([zArch, b + (archTop - b) * Math.sin(a)]);
+    }
+  }
+  bottom.push([frontArchEnd, b]);
+
+  const all = [
+    ...topSamples.map(v => new THREE.Vector2(v.x, v.y)),
+    ...bottom.map(([z, y]) => new THREE.Vector2(z, y)),
+  ];
+
+  const iters = Math.round(CONFIG.smoothing * 3);
+  const smoothed = iters > 0 ? chaikinClosed(all, iters) : all;
+  return smoothed.map(v => new THREE.Vector2(-v.x, v.y)).reverse();
+}
+
+function buildBody(P){
+  const g = new THREE.Group();
+  g.name = 'Body';
+
+  const pts = bodyProfilePoints(P);
+  const shape = new THREE.Shape(pts);
+  const depth = P.width - 0.06;
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelSize: 0.012, bevelThickness: 0.02, bevelSegments: 2,
+    curveSegments: 24,
+  });
+
+  geo.applyMatrix4(new THREE.Matrix4().set(
+     0, 0, 1, 0,
+     0, 1, 0, 0,
+    -1, 0, 0, 0,
+     0, 0, 0, 1
+  ));
+  geo.translate(-depth / 2, 0, 0);
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, MAT.paint);
+  mesh.name = 'BodyShell';
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.userData.selectable = true;
+  g.add(mesh);
+
+  // Paneles de puertas exteriores
+  const b = P.bottomY;
+  const doorH = Math.max(0.08, ((P.frontBeltY + P.rearBeltY) / 2) - b);
+  const doorMidY = b + doorH / 2;
+  const doorMidZ = (P.cabinFrontZ + P.cabinRearZ) / 2;
+  const doorLen = Math.max(0.1, P.cabinFrontZ - P.cabinRearZ);
+  const doorThick = 0.045;
+  const sideX = (depth / 2) - doorThick / 2;
+
+  for (const s of [-1, 1]){
+    addBox(g, `DoorOuter_${s}`, [doorThick, doorH, doorLen], [s * sideX, doorMidY, doorMidZ], MAT.paint);
+    addBox(g, `DoorSill_${s}`,  [doorThick + 0.015, 0.02, doorLen], [s * sideX, b + doorH, doorMidZ], MAT.paint);
+  }
+
+  // Líneas de corte de puertas y capó
+  const xSide = P.halfW + 0.002;
+  const yBot  = P.bottomY + 0.06;
+  const yTop  = P.beltY   - 0.01;
+  const hDoor = Math.max(0.08, yTop - yBot);
+  const cF = P.cabinFrontZ;
+  const cR = P.cabinRearZ;
+  const bZ = P.bPillar ? cF + (cR - cF) * 0.47 : null;
+
+  for (const s of [-1, 1]){
+    const x = s * xSide;
+    addPanelGap(g, `DoorLineF_${s}`, [0.008, hDoor, 0.01], [x, (yBot + yTop) / 2, cF - 0.04]);
+    addPanelGap(g, `DoorLineB_${s}`, [0.008, hDoor, 0.01], [x, (yBot + yTop) / 2, cR + 0.04]);
+    if (bZ !== null){
+      addPanelGap(g, `DoorLineMid_${s}`, [0.008, hDoor, 0.01], [x, (yBot + yTop) / 2, bZ]);
+    }
+  }
+
+  addPanelGap(g, 'HoodLine', [2 * (P.halfW - 0.20), 0.01, 0.01], [0, P.beltY + 0.005, cF + 0.005]);
+  addPanelGap(g, 'TrunkLine', [2 * (P.halfW - 0.20), 0.01, 0.01], [0, P.beltY + 0.005, cR - 0.005]);
+
+  // Líneas de diseño
+  if (CONFIG.designLines.enabled) {
+    const lThick = CONFIG.designLines.thickness;
+    if (P.frontOverhang >= 0.15) {
+      const zFront = P.zF - Math.min(0.65, P.frontOverhang * 0.7);
+      const yFront = P.bottomY + (P.noseTopY - P.bottomY) * 0.5;
+      addPanelGap(g, 'BumperLineF', [P.width + 0.005, lThick, 0.02], [0, yFront, zFront]);
+    }
+    if (P.rearOverhang >= 0.15) {
+      const zRear = P.zR + Math.min(0.65, P.rearOverhang * 0.7);
+      const yRear = P.bottomY + (P.tailTopY - P.bottomY) * 0.5;
+      addPanelGap(g, 'BumperLineR', [P.width + 0.005, lThick, 0.02], [0, yRear, zRear]);
+    }
+    if (CONFIG.designLines.random) {
+      for (let i = 0; i < 3; i++) {
+        const ry = P.bottomY + 0.2 + Math.random() * (P.bodyH - 0.4);
+        for (const s of [-1, 1]) {
+          addPanelGap(g, `SideLineRand_${i}_${s}`, [0.012, lThick * (0.8 + Math.random()), P.length * 0.7], [s * xSide, ry, 0]);
+        }
+      }
+    }
+  }
+
+  return g;
+}
+
+function buildCabin(P){
+  const g = new THREE.Group();
+  g.name = 'Cabin';
+
+  const cw = P.cabinW;
+  const belt = P.beltY, roof = P.roofY;
+  const cF = P.cabinFrontZ, cR = P.cabinRearZ;
+  const rF = P.roofFrontZ,  rR = P.roofRearZ;
+  const pThick = CONFIG.pillars.thick;
+
+  const roofGap = CONFIG.glass.roofGap;
+  const gBottom = belt + CONFIG.glass.bottomOffset;
+
+  const metalX = CONFIG.glass.roofMetalX;
+  const metalZ = CONFIG.glass.roofMetalZ;
+  const metalY = CONFIG.glass.roofMetalY;
+
+  const totalZ = Math.max(0.02, rF - rR);
+  const gX  = Math.max(0, cw * (1 - metalX));
+  const gZf = Math.max(rR + 0.01, rF - totalZ * metalZ * 0.5);
+  const gZr = Math.min(rF - 0.01, rR + totalZ * metalZ * 0.5);
+
+  const oX = cw + 0.02;
+  const rCurve = CONFIG.glass.roofCurve || 0.0;
+
+  function getRoofY(x, z){
+    const tZ = THREE.MathUtils.clamp((rF - z) / Math.max(0.01, rF - rR), 0, 1);
+    const archZ = 4 * tZ * (1 - tZ) * rCurve;
+    const normX = THREE.MathUtils.clamp(Math.abs(x) / Math.max(0.1, oX), 0, 1);
+    const crownX = (1 - normX * normX) * (rCurve * 0.35);
+    return roof + archZ + crownX;
+  }
+
+  function addCurvedSurface(name, xMin, xMax, zMin, zMax, xSegs, zSegs, mat, yOffset = 0){
+    const geo = new THREE.BufferGeometry();
+    const positions = [];
+    const indices = [];
+
+    for (let iz = 0; iz <= zSegs; iz++){
+      const tz = iz / zSegs;
+      const z = zMin + (zMax - zMin) * tz;
+      for (let ix = 0; ix <= xSegs; ix++){
+        const tx = ix / xSegs;
+        const x = xMin + (xMax - xMin) * tx;
+        const y = getRoofY(x, z) + yOffset;
+        positions.push(x, y, z);
+      }
+    }
+
+    const stride = xSegs + 1;
+    for (let iz = 0; iz < zSegs; iz++){
+      for (let ix = 0; ix < xSegs; ix++){
+        const a = iz * stride + ix;
+        const b = a + 1;
+        const c = (iz + 1) * stride + ix;
+        const d = c + 1;
+        indices.push(a, b, c);
+        indices.push(b, d, c);
+        indices.push(a, c, b);
+        indices.push(b, c, d);
+      }
+    }
+
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = name;
+    mesh.castShadow = mesh.receiveShadow = true;
+    g.add(mesh);
+    return mesh;
+  }
+
+  // Chapa metálica del techo usando MAT.roofPaint (color de techo correcto)
+  addCurvedSurface('RoofFront', -oX, oX, gZf, rF, 8, 4, MAT.roofPaint, metalY * 0.5);
+  addCurvedSurface('RoofRear',  -oX, oX, rR, gZr, 8, 4, MAT.roofPaint, metalY * 0.5);
+  addCurvedSurface('RoofSideL', -oX, -gX, gZr, gZf, 4, 8, MAT.roofPaint, metalY * 0.5);
+  addCurvedSurface('RoofSideR',  gX,  oX, gZr, gZf, 4, 8, MAT.roofPaint, metalY * 0.5);
+
+  if (gX > 0.01 && gZf > gZr) {
+    addCurvedSurface('PanoramicRoof', -gX, gX, gZr, gZf, 8, 12, MAT.roofGlass);
+  }
+
+  const gw = cw - 0.005;
+  const wsGeo = new THREE.BufferGeometry();
+  const wsPos = [], wsInd = [];
+  const wsSegs = 8;
+  for (let ix = 0; ix <= wsSegs; ix++){
+    const tx = ix / wsSegs;
+    const x = -gw + 2 * gw * tx;
+    const yTopC = getRoofY(x, rF) - roofGap - 0.01;
+    wsPos.push(x, gBottom, cF);
+    wsPos.push(x, yTopC, rF);
+  }
+  for (let ix = 0; ix < wsSegs; ix++){
+    const i0 = ix * 2, i1 = i0 + 1, i2 = (ix + 1) * 2, i3 = i2 + 1;
+    wsInd.push(i0, i2, i1);
+    wsInd.push(i2, i3, i1);
+    wsInd.push(i0, i1, i2);
+    wsInd.push(i2, i1, i3);
+  }
+  wsGeo.setAttribute('position', new THREE.Float32BufferAttribute(wsPos, 3));
+  wsGeo.setIndex(wsInd);
+  wsGeo.computeVertexNormals();
+  const wsMesh = new THREE.Mesh(wsGeo, MAT.glass);
+  wsMesh.name = 'Windshield';
+  g.add(wsMesh);
+
+  const rwGeo = new THREE.BufferGeometry();
+  const rwPos = [], rwInd = [];
+  for (let ix = 0; ix <= wsSegs; ix++){
+    const tx = ix / wsSegs;
+    const x = -gw + 2 * gw * tx;
+    const yTopC = getRoofY(x, rR) - roofGap - 0.01;
+    rwPos.push(x, gBottom, cR);
+    rwPos.push(x, yTopC, rR);
+  }
+  for (let ix = 0; ix < wsSegs; ix++){
+    const i0 = ix * 2, i1 = i0 + 1, i2 = (ix + 1) * 2, i3 = i2 + 1;
+    rwInd.push(i0, i1, i2);
+    rwInd.push(i2, i1, i3);
+    rwInd.push(i0, i2, i1);
+    rwInd.push(i2, i3, i1);
+  }
+  rwGeo.setAttribute('position', new THREE.Float32BufferAttribute(rwPos, 3));
+  rwGeo.setIndex(rwInd);
+  rwGeo.computeVertexNormals();
+  const rwMesh = new THREE.Mesh(rwGeo, MAT.glass);
+  rwMesh.name = 'RearWindow';
+  g.add(rwMesh);
+
+  for (const s of [-1, 1]){
+    const x = s * cw;
+    addPillar(g, `PillarA_${s}`, x, belt + 0.03, cF, getRoofY(x, rF), rF, pThick, MAT.roofPaint);
+    addPillar(g, `PillarC_${s}`, x, getRoofY(x, rR), rR, belt + 0.03, cR, pThick, MAT.roofPaint);
+  }
+
+  if (P.bPillar){
+    const bZ = cF + (cR - cF) * 0.47;
+    for (const s of [-1, 1]){
+      const x = s * (cw - 0.004);
+      const yF = getRoofY(x, rF) - roofGap - 0.01;
+      const yB = getRoofY(x, bZ) - roofGap - 0.01;
+      const yR = getRoofY(x, rR) - roofGap - 0.01;
+      addQuad(g, `SideWinF_${s}`, [[x, gBottom, cF], [x, gBottom, bZ], [x, yB, bZ], [x, yF, rF]], MAT.glass);
+      addQuad(g, `SideWinR_${s}`, [[x, gBottom, bZ], [x, gBottom, cR], [x, yR, rR], [x, yB, bZ]], MAT.glass);
+      addPillar(g, `PillarB_${s}`, x, belt + 0.03, bZ, getRoofY(x, bZ), bZ, pThick, MAT.roofPaint);
+    }
+  } else {
+    for (const s of [-1, 1]){
+      const x = s * (cw - 0.004);
+      const yF = getRoofY(x, rF) - roofGap - 0.01;
+      const yR = getRoofY(x, rR) - roofGap - 0.01;
+      addQuad(g, `SideWin_${s}`, [[x, gBottom, cF], [x, gBottom, cR], [x, yR, rR], [x, yF, rF]], MAT.glass);
+    }
+  }
+
+  return g;
+}
+
+function buildInterior(P){
+  const g = new THREE.Group();
+  g.name = 'Interior';
+
+  const cw   = P.cabinW;
+  const cF   = P.cabinFrontZ, cR = P.cabinRearZ;
+  const span = Math.max(0.1, cF - cR);
+
+  const yFloor = P.bottomY + 0.04;
+  const beltH  = Math.max(0.1, P.beltY - yFloor);
+
+  // Escalado dinámico de los asientos en altura y tamaño según lo grande que se haga la cabina
+  const cabinHMult = THREE.MathUtils.clamp(CONFIG.zones.cabin.height, 0.65, 1.45);
+  const cabinLMult = THREE.MathUtils.clamp(CONFIG.zones.cabin.length, 0.70, 1.40);
+
+  const seatX = cw * 0.42;
+  const seatW = cw * 0.68 * Math.min(1.12, 0.90 + cabinHMult * 0.10);
+
+  const frontSeatZ = cF - span * 0.38;
+  const rearSeatZ  = cR + span * 0.25;
+
+  // Suelo alfombrado de la cabina
+  addBox(g, 'InteriorFloor', [cw * 1.94, 0.015, span * 0.98], [0, yFloor + 0.008, (cF + cR) / 2], MAT.floor);
+
+  // Alfombrillas delanteras del conductor y copiloto
+  for (const s of [-1, 1]){
+    addBox(g, `FloorMat_${s}`, [seatW * 0.90, 0.006, 0.55 * cabinLMult], [s * seatX, yFloor + 0.018, cF - span * 0.32], MAT.dash);
+  }
+
+  // Cortafuegos delantero y mamparo trasero
+  addBox(g, 'Firewall',     [cw * 1.96, beltH, 0.03], [0, yFloor + beltH / 2, cF - 0.015], MAT.dash);
+  addBox(g, 'RearBulkhead', [cw * 1.96, beltH, 0.03], [0, yFloor + beltH / 2, cR + 0.015], MAT.dash);
+  addBox(g, 'ParcelShelf',  [cw * 1.94, 0.025, 0.30], [0, P.rearBeltY - 0.01, cR + 0.15], MAT.dash);
+
+  // Paneles interiores de puerta con reposabrazos y tiradores cromados
+  for (const s of [-1, 1]){
+    const dx = s * (cw + 0.01);
+    addBox(g, `InnerDoorCard_${s}`, [0.025, beltH * 0.90, span * 0.94], [dx, yFloor + beltH * 0.46, (cF + cR) / 2], MAT.leather);
+    addBox(g, `DoorArmrest_${s}`,   [0.055, 0.04, span * 0.50], [dx - s * 0.02, yFloor + beltH * 0.48, (cF + cR) / 2], MAT.dash);
+    addBox(g, `DoorHandle_${s}`,    [0.015, 0.02, 0.08], [dx - s * 0.035, yFloor + beltH * 0.62, cF - span * 0.32], MAT.chrome);
+  }
+
+  // Consola central y túnel de transmisión
+  const consoleW   = 0.24;
+  const consoleH   = 0.22 * cabinHMult;
+  const consoleY   = yFloor + consoleH / 2;
+  const consoleZ   = (cF + cR) / 2;
+  const consoleLen = span * 0.84;
+  addBox(g, 'CenterTunnel', [consoleW, consoleH, consoleLen], [0, consoleY, consoleZ], MAT.dash);
+  addBox(g, 'ConsoleTrimL', [0.008, consoleH, consoleLen], [-consoleW/2, consoleY, consoleZ], MAT.ambient);
+  addBox(g, 'ConsoleTrimR', [0.008, consoleH, consoleLen], [ consoleW/2, consoleY, consoleZ], MAT.ambient);
+
+  // Reposabrazos central abatible de cuero
+  addBox(g, 'CenterArmrest', [consoleW * 0.95, 0.07 * cabinHMult, span * 0.32], [0, yFloor + consoleH + 0.035 * cabinHMult, cR + span * 0.42], MAT.leather);
+
+  // Portavasos dobles con anillo cromado
+  for (const cz of [-0.065, 0.065]){
+    const cupHolder = new THREE.Mesh(new THREE.TorusGeometry(0.040, 0.006, 8, 20), MAT.chrome);
+    cupHolder.rotation.x = Math.PI / 2;
+    cupHolder.position.set(0, yFloor + consoleH + 0.006, cF - span * 0.44 + cz);
+    g.add(cupHolder);
+    const cupWell = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.036, 0.03, 16), MAT.floor);
+    cupWell.position.set(0, yFloor + consoleH - 0.01, cF - span * 0.44 + cz);
+    g.add(cupWell);
+  }
+
+  // Palanca de cambios (Gear Shift Lever)
+  const shiftZ = cF - span * 0.28;
+  const shiftY = yFloor + consoleH;
+  addBox(g, 'ShiftBezel', [0.12, 0.012, 0.14], [0, shiftY + 0.006, shiftZ], MAT.chrome);
+  addBox(g, 'ShiftBoot',  [0.085, 0.045 * cabinHMult, 0.10], [0, shiftY + 0.025 * cabinHMult, shiftZ], MAT.leather);
+  const shiftRod = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.09 * cabinHMult, 16), MAT.chrome);
+  shiftRod.position.set(0, shiftY + 0.08 * cabinHMult, shiftZ);
+  shiftRod.rotation.x = 0.12;
+  g.add(shiftRod);
+  const shiftKnob = new THREE.Mesh(new THREE.SphereGeometry(0.024, 16, 16), MAT.dash);
+  shiftKnob.scale.set(1, 1.2, 1);
+  shiftKnob.position.set(0, shiftY + 0.13 * cabinHMult, shiftZ + 0.01);
+  g.add(shiftKnob);
+  const shiftCap = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.004, 16), MAT.chrome);
+  shiftCap.position.set(0, shiftY + 0.145 * cabinHMult, shiftZ + 0.01);
+  g.add(shiftCap);
+
+  // Freno de mano (Handbrake Lever)
+  const hbX = -0.065;
+  const hbZ = cF - span * 0.38;
+  const hbY = yFloor + consoleH;
+  addBox(g, 'HandbrakeBoot', [0.035, 0.03, 0.11], [hbX, hbY + 0.015, hbZ], MAT.leather);
+  const hbHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.13, 16), MAT.dash);
+  hbHandle.rotation.x = -0.38;
+  hbHandle.position.set(hbX, hbY + 0.065, hbZ - 0.02);
+  g.add(hbHandle);
+  const hbBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.014, 12), MAT.chrome);
+  hbBtn.rotation.x = -0.38;
+  hbBtn.position.set(hbX, hbY + 0.115, hbZ - 0.065);
+  g.add(hbBtn);
+
+  // Pedales del conductor (Pedal Box)
+  const pedX = -seatX;
+  const pedY = yFloor + 0.07;
+  const pedZ = cF - 0.06;
+  addBox(g, 'PedalAccel',  [0.035, 0.09, 0.012],  [pedX + 0.07, pedY, pedZ], MAT.chrome, [-0.25, 0, 0]);
+  addBox(g, 'PedalBrake',  [0.055, 0.065, 0.012], [pedX, pedY + 0.015, pedZ], MAT.chrome, [-0.25, 0, 0]);
+  addBox(g, 'PedalClutch', [0.05, 0.08, 0.012],   [pedX - 0.08, pedY + 0.015, pedZ], MAT.chrome, [-0.25, 0, 0]);
+
+  // Salpicadero (Dashboard)
+  const dashY = yFloor + beltH * 0.76;
+  const dashZ = cF - 0.20;
+  const dashType = CONFIG.interior.dashboard;
+
+  if (dashType === 'sport'){
+    addBox(g, 'DashMain',   [cw * 1.94, 0.18, 0.30], [0, dashY, dashZ], MAT.carbon);
+    addBox(g, 'DashAccent', [cw * 1.85, 0.008, 0.015], [0, dashY - 0.08, dashZ - 0.10], MAT.ambient);
+  } else if (dashType === 'luxury'){
+    addBox(g, 'DashMain', [cw * 1.94, 0.18, 0.30], [0, dashY, dashZ], MAT.dash);
+    addBox(g, 'DashWood', [cw * 1.86, 0.04, 0.02],  [0, dashY - 0.02, dashZ - 0.14], MAT.wood);
+    const clock = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.006, 8, 24), MAT.chrome);
+    clock.position.set(0, dashY + 0.03, dashZ - 0.15); g.add(clock);
+  } else {
+    addBox(g, 'DashMain',   [cw * 1.94, 0.18, 0.30], [0, dashY, dashZ], MAT.dash);
+    addBox(g, 'DashAccent', [cw * 1.85, 0.006, 0.02], [0, dashY - 0.06, dashZ - 0.10], MAT.ambient);
+  }
+
+  // Visera de instrumentos y pantallas
+  addBox(g, 'DashBinnacle',  [0.38, 0.08, 0.22],  [-seatX, dashY + 0.08, dashZ - 0.04], MAT.dash);
+  addBox(g, 'ClusterScreen', [0.30, 0.10, 0.012], [-seatX, dashY + 0.04, dashZ - 0.13], MAT.screen, [0.15, 0, 0]);
+  addBox(g, 'InfoScreen',    [0.32, 0.16, 0.015], [0.08,   dashY + 0.06, dashZ - 0.12], MAT.screen, [0.12, 0.10, 0]);
+
+  // Rejillas de climatización y guantera
+  addBox(g, 'VentL',   [0.09, 0.035, 0.015], [-cw * 0.85, dashY + 0.02, dashZ - 0.14], MAT.chrome);
+  addBox(g, 'VentR',   [0.09, 0.035, 0.015], [ cw * 0.85, dashY + 0.02, dashZ - 0.14], MAT.chrome);
+  addBox(g, 'VentMid', [0.18, 0.035, 0.015], [0.08, dashY - 0.05, dashZ - 0.14], MAT.chrome);
+  addBox(g, 'GloveBox',    [seatW * 0.85, 0.12, 0.015], [seatX, dashY - 0.06, dashZ - 0.14], MAT.dash);
+  addBox(g, 'GloveHandle', [0.04, 0.012, 0.01],         [seatX + 0.08, dashY - 0.03, dashZ - 0.15], MAT.chrome);
+
+  // Volante y columna de dirección
+  const colY = dashY - 0.04;
+  const colZ = dashZ - 0.09;
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 0.18, 16), MAT.dash);
+  col.position.set(-seatX, colY, colZ);
+  col.rotation.x = -0.45;
+  g.add(col);
+
+  addBox(g, 'StalkL', [0.09, 0.012, 0.012], [-seatX - 0.07, colY + 0.04, colZ - 0.04], MAT.dash, [0, 0, 0.2]);
+  addBox(g, 'StalkR', [0.09, 0.012, 0.012], [-seatX + 0.07, colY + 0.04, colZ - 0.04], MAT.dash, [0, 0, -0.2]);
+
+  const wheelY = colY + 0.075;
+  const wheelZ = colZ - 0.085;
+  const sw = new THREE.Mesh(new THREE.TorusGeometry(0.165, 0.018, 12, 32), MAT.dash);
+  sw.position.set(-seatX, wheelY, wheelZ);
+  sw.rotation.x = Math.PI / 2 - 0.45;
+  g.add(sw);
+
+  const hubCap = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.022, 24), MAT.dash);
+  hubCap.position.set(-seatX, wheelY, wheelZ);
+  hubCap.rotation.x = Math.PI / 2 - 0.45;
+  g.add(hubCap);
+
+  const emblem = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.026, 16), MAT.chrome);
+  emblem.position.set(-seatX, wheelY, wheelZ);
+  emblem.rotation.x = Math.PI / 2 - 0.45;
+  g.add(emblem);
+
+  // ASIENTOS DELANTEROS Y TRASEROS (con altura y tamaño dinámicos en función de la cabina)
+  const cushionH  = 0.09 * cabinHMult;
+  const cushionL  = 0.46 * cabinLMult;
+  const backH     = 0.48 * cabinHMult;
+  const headrestH = 0.14 * cabinHMult;
+
+  const yCushion = yFloor + cushionH * 0.5 + 0.035;
+  const yBack    = yCushion + cushionH * 0.5 + backH * 0.48;
+  const yHead    = yBack + backH * 0.5 + headrestH * 0.65;
+
+  for (const s of [-1, 1]){
+    const x = s * seatX;
+    addBox(g, `RailL_${s}`, [0.02, 0.02, cushionL], [x - seatW * 0.35, yFloor + 0.015, frontSeatZ], MAT.chrome);
+    addBox(g, `RailR_${s}`, [0.02, 0.02, cushionL], [x + seatW * 0.35, yFloor + 0.015, frontSeatZ], MAT.chrome);
+
+    addBox(g, `SeatCushionF_${s}`, [seatW, cushionH, cushionL], [x, yCushion, frontSeatZ], MAT.leather);
+    addBox(g, `BolsterL_${s}`, [0.06, cushionH * 0.9, cushionL], [x - seatW * 0.44, yCushion + 0.03 * cabinHMult, frontSeatZ], MAT.leather);
+    addBox(g, `BolsterR_${s}`, [0.06, cushionH * 0.9, cushionL], [x + seatW * 0.44, yCushion + 0.03 * cabinHMult, frontSeatZ], MAT.leather);
+
+    addBox(g, `SeatBackF_${s}`, [seatW * 0.94, backH, 0.09 * cabinLMult], [x, yBack, frontSeatZ - cushionL * 0.48], MAT.leather, [-0.22, 0, 0]);
+
+    addCyl(g, `HeadPostL_${s}`, 0.006, 0.08 * cabinHMult, [x - 0.06, yHead - 0.06 * cabinHMult, frontSeatZ - cushionL * 0.60], MAT.chrome);
+    addCyl(g, `HeadPostR_${s}`, 0.006, 0.08 * cabinHMult, [x + 0.06, yHead - 0.06 * cabinHMult, frontSeatZ - cushionL * 0.60], MAT.chrome);
+    addBox(g, `HeadrestF_${s}`, [seatW * 0.52, headrestH, 0.09 * cabinLMult], [x, yHead, frontSeatZ - cushionL * 0.64], MAT.leather);
+  }
+
+  for (const s of [-1, 1]){
+    const x = s * seatX;
+    const rCushionL = 0.44 * cabinLMult;
+    addBox(g, `SeatCushionR_${s}`, [seatW, cushionH, rCushionL], [x, yCushion, rearSeatZ], MAT.leather);
+    addBox(g, `SeatBackR_${s}`,    [seatW * 0.96, backH * 0.92, 0.09 * cabinLMult], [x, yBack - 0.02 * cabinHMult, rearSeatZ - rCushionL * 0.45], MAT.leather, [-0.18, 0, 0]);
+    addBox(g, `HeadrestR_${s}`,    [seatW * 0.50, headrestH * 0.93, 0.09 * cabinLMult], [x, yHead - 0.03 * cabinHMult, rearSeatZ - rCushionL * 0.58], MAT.leather);
+  }
+
+  // Espejo retrovisor interior y luz ambiental de cabina
+  const mirrorY = P.roofY - CONFIG.glass.roofGap - 0.04;
+  const mirrorZ = cF - 0.06;
+  addBox(g, 'MirrorStem',  [0.015, 0.04, 0.015], [0, mirrorY + 0.015, mirrorZ], MAT.dash);
+  addBox(g, 'MirrorBody',  [0.18,  0.05, 0.025], [0, mirrorY, mirrorZ], MAT.dash);
+  addBox(g, 'MirrorGlass', [0.165, 0.04, 0.004], [0, mirrorY, mirrorZ - 0.013], MAT.chrome);
+
+  const cabinLight = new THREE.PointLight(0xfff2d8, 0.9, 3.2, 2);
+  cabinLight.position.set(0, yFloor + beltH * 0.9, (cF + cR) / 2);
+  g.add(cabinLight);
+
+  return g;
+}
+
+function buildHeadlights(parent, P){
+  const zFace = P.surfaceZf + CONFIG.headlight.offsetZ;
+  const yH = P.bottomY + (P.noseTopY - P.bottomY) * 0.80 + CONFIG.headlight.offsetY;
+  const xH = 0.70 * (P.width / 1.92);
+  const type = CONFIG.headlight.type;
+  const rot = [CONFIG.headlight.rotX, CONFIG.headlight.rotY, CONFIG.headlight.rotZ];
+
+  for (const s of [-1, 1]){
+    const grp = new THREE.Group();
+    grp.position.set(s * xH, yH, zFace);
+    grp.rotation.set(rot[0], rot[1], rot[2]);
+    parent.add(grp);
+
+    const add = (name, geo, x, y, z) => {
+      const m = new THREE.Mesh(geo, MAT.headlight);
+      m.position.set(x * s, y, z);
+      m.name = name;
+      grp.add(m);
+      return m;
+    };
+
+    const depth = 0.20;
+    const zOff = -EMBED_DEPTH + depth / 2;
+
+    switch (type){
+      case 'round':
+        add('HeadRoundA', new THREE.CylinderGeometry(0.075, 0.075, depth, 24), -0.10, 0, zOff).rotation.x = Math.PI/2;
+        add('HeadRoundB', new THREE.CylinderGeometry(0.055, 0.055, depth, 24),  0.10, 0, zOff).rotation.x = Math.PI/2;
+        break;
+      case 'strip':
+        add('Strip', new THREE.BoxGeometry(0.42, 0.025, depth), 0, 0, zOff);
+        add('DRL',   new THREE.BoxGeometry(0.42, 0.012, depth * 0.7), 0, 0.045, zOff);
+        break;
+      case 'matrix':
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++){
+          add(`LED_${i}_${j}`, new THREE.BoxGeometry(0.055, 0.035, depth), -0.08 + i*0.08, -0.025 + j*0.05, zOff);
+        }
+        break;
+      case 'lens':
+        add('Lens', new THREE.CylinderGeometry(0.11, 0.11, depth, 32), 0, 0, zOff).rotation.x = Math.PI/2;
+        break;
+      case 'quad':
+        for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++){
+          add(`Quad_${i}_${j}`, new THREE.CylinderGeometry(0.045, 0.045, depth, 20), (i-0.5)*0.12, (j-0.5)*0.08, zOff).rotation.x = Math.PI/2;
+        }
+        break;
+      case 'hyper':
+        add('HyperMain', new THREE.BoxGeometry(0.34, 0.04, depth), 0, 0, zOff);
+        add('HyperDRL',  new THREE.BoxGeometry(0.36, 0.012, depth * 0.5), 0, 0.03, zOff);
+        break;
+      case 'halo':
+        add('Halo1', new THREE.TorusGeometry(0.055, 0.012, 16, 32), -0.09, 0, zOff);
+        add('Halo2', new THREE.TorusGeometry(0.045, 0.010, 16, 32),  0.09, 0, zOff);
+        break;
+      default:
+        add('Block', new THREE.BoxGeometry(0.24, 0.09, depth), 0, 0, zOff);
+        add('DRL',   new THREE.BoxGeometry(0.22, 0.02, depth * 0.6), 0, 0.075, zOff);
+    }
+  }
+}
+
+function buildFrontDetails(P){
+  const g = new THREE.Group();
+  g.name = 'FrontDetails';
+  const b = P.bottomY;
+  const ws = P.width / 1.92;
+  const zFace = P.surfaceZf;
+  const fH = CONFIG.zones.frontBumper.height;
+  const grilleY = b + (P.noseTopY - b) * 0.50 * fH;
+  const lowerY  = b + (P.noseTopY - b) * 0.22 * fH;
+  const gW = 1.05 * ws, gH = 0.26;
+  const protG = CONFIG.embeds.grille.protrudeZ;
+  const protI = CONFIG.embeds.intake.protrudeZ;
+  const gType = CONFIG.embeds.grille.type;
+
+  embedBox(g, 'GrilleBase',     [gW, gH, 0],        [0, grilleY, zFace],           [0,0,1], protG, MAT.grilleBase);
+  embedBox(g, 'GrilleFrameTop', [gW + 0.06, 0.02, 0], [0, grilleY + gH/2, zFace],  [0,0,1], protG, MAT.chrome);
+  embedBox(g, 'GrilleFrameBot', [gW + 0.06, 0.02, 0], [0, grilleY - gH/2, zFace],  [0,0,1], protG, MAT.chrome);
+  embedBox(g, 'GrilleFrameL',   [0.025, gH, 0],     [-gW/2 - 0.03, grilleY, zFace],[0,0,1], protG, MAT.chrome);
+  embedBox(g, 'GrilleFrameR',   [0.025, gH, 0],     [ gW/2 + 0.03, grilleY, zFace],[0,0,1], protG, MAT.chrome);
+
+  if (gType === 'slats' || gType === 'bars-h'){
+    const vertical = (gType !== 'bars-h');
+    const nSlats = gType === 'bars-h' ? 7 : 13;
+    for (let i = 0; i < nSlats; i++){
+      const t = (i / (nSlats - 1)) - 0.5;
+      const px = vertical ? t * gW * 0.92 : 0;
+      const py = vertical ? grilleY : grilleY + t * gH * 0.92;
+      const sz = vertical ? [0.018, gH * 0.92, 0] : [gW * 0.92, 0.018, 0];
+      embedBox(g, `GrilleSlat_${i}`, sz, [px, py, zFace], [0,0,1], protG, MAT.chrome);
+    }
+  } else if (gType === 'honeycomb' || gType === 'mesh'){
+    embedBox(g, 'GrilleInnerBorder', [gW - 0.02, 0.015, 0], [0, grilleY + gH/2 - 0.02, zFace], [0,0,1], protG, MAT.chrome);
+  }
+
+  embedBox(g, 'LowerGrille',      [0.90 * ws, 0.12, 0], [0, lowerY, zFace],        [0,0,1], protI, MAT.grilleBase);
+  embedBox(g, 'LowerGrilleFrame', [0.92 * ws, 0.02, 0], [0, lowerY + 0.06, zFace], [0,0,1], protI, MAT.chrome);
+  for (const s of [-1, 1]){
+    embedBox(g, `AirIntake_${s}`,      [0.22 * ws, 0.10, 0],  [s * 0.55 * ws, lowerY, zFace],         [0,0,1], protI, MAT.grilleBase);
+    embedBox(g, `AirIntakeFrame_${s}`, [0.22 * ws, 0.015, 0], [s * 0.55 * ws, lowerY + 0.055, zFace], [0,0,1], protI, MAT.chrome);
+  }
+
+  buildHeadlights(g, P);
+  embedCylinder(g, 'Star', 0.04, [0, b + (P.noseTopY - b) * 0.88, zFace], [0,0,1], 0.005, MAT.chrome);
+  return g;
+}
+
+function buildRearDetails(P){
+  const g = new THREE.Group();
+  g.name = 'RearDetails';
+  const b = P.bottomY;
+  const ws = P.width / 1.92;
+  const zFaceTail = P.surfaceZr + CONFIG.taillight.offsetZ;
+  const zFaceExhaust = P.surfaceZr;
+  const protT = CONFIG.embeds.taillight.protrudeZ || 0.01;
+  const protE = CONFIG.embeds.exhaust.protrudeZ;
+  const eType = CONFIG.embeds.exhaust.type;
+  const tType = CONFIG.taillight.type;
+  const rot   = [CONFIG.taillight.rotX, CONFIG.taillight.rotY, CONFIG.taillight.rotZ];
+  const tailY = b + (P.tailTopY - b) * 0.80 + CONFIG.taillight.offsetY;
+
+  for (const s of [-1, 1]){
+    const grp = new THREE.Group();
+    grp.position.set(s * 0.70 * ws, tailY, zFaceTail);
+    grp.rotation.set(rot[0], rot[1] + Math.PI, rot[2]);
+    g.add(grp);
+
+    const add = (name, geo, x, y, z) => {
+      const m = new THREE.Mesh(geo, MAT.taillight);
+      m.position.set(x * s, y, z);
+      m.name = name;
+      grp.add(m);
+      return m;
+    };
+
+    const depth = 0.20 + protT;
+    const zOff = -EMBED_DEPTH + depth / 2;
+
+    switch (tType){
+      case 'bar':
+        add('Bar', new THREE.BoxGeometry(0.40 * ws, 0.04, depth), 0, 0, zOff);
+        break;
+      case 'split':
+        add('SplitTop', new THREE.BoxGeometry(0.28 * ws, 0.04, depth), 0, 0.04, zOff);
+        add('SplitBot', new THREE.BoxGeometry(0.28 * ws, 0.04, depth), 0, -0.04, zOff);
+        break;
+      case 'round':
+        add('Round', new THREE.CylinderGeometry(0.08, 0.08, depth, 24), 0, 0, zOff).rotation.x = Math.PI/2;
+        break;
+      case 'matrix':
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++){
+          add(`TMatrix_${i}_${j}`, new THREE.BoxGeometry(0.06, 0.03, depth), -0.08 + i*0.08, -0.025 + j*0.05, zOff);
+        }
+        break;
+      case 'neon':
+        add('Neon_Box', new THREE.BoxGeometry(0.32 * ws, 0.06, depth), 0, 0, zOff);
+        add('Neon_Glow', new THREE.BoxGeometry(0.34 * ws, 0.02, depth + 0.01), 0, 0, zOff);
+        break;
+      default:
+        add('Block', new THREE.BoxGeometry(0.28 * ws, 0.10, depth), 0, 0, zOff);
+    }
+
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.30 * ws, 0.02, depth * 0.8), MAT.chrome);
+    frame.position.set(0, 0.06, zOff);
+    grp.add(frame);
+  }
+
+  if (tType !== 'bar') {
+    embedBox(g, 'RearChrome', [1.20 * ws, 0.02, 0], [0, tailY, zFaceTail], [0,0,-1], protT * 0.7, MAT.chrome);
+  }
+
+  // Escapes
+  const exhaustY = b + (P.rearBeltY - b) * 0.16;
+  if (eType === 'dual'){
+    for (const s of [-1, 1]){
+      embedCylinder(g, `Exhaust_${s}`, 0.05, [s * 0.45 * ws, exhaustY, zFaceExhaust], [0,0,-1], protE, MAT.chrome);
+    }
+  } else if (eType === 'quad'){
+    for (const s of [-1, 1]){
+      embedCylinder(g, `Exhaust_${s}_a`, 0.04, [s * 0.42 * ws, exhaustY, zFaceExhaust], [0,0,-1], protE, MAT.chrome);
+      embedCylinder(g, `Exhaust_${s}_b`, 0.04, [s * 0.56 * ws, exhaustY, zFaceExhaust], [0,0,-1], protE, MAT.chrome);
+    }
+  }
+
+  return g;
+}
+
+function buildSideDetails(P){
+  const g = new THREE.Group();
+  g.name = 'SideDetails';
+
+  const belt = P.beltY;
+  const cF = P.cabinFrontZ, cR = P.cabinRearZ;
+  const xSide = P.halfW + 0.005;
+  const protHa = CONFIG.embeds.handle.protrudeX;
+  const protM  = CONFIG.embeds.mirror.protrudeX;
+  const hType  = CONFIG.embeds.handle.type;
+
+  for (const s of [-1, 1]){
+    const mirY = belt + 0.04;
+    const mirZ = cF - 0.20;
+    embedBox(g, `MirrorArm_${s}`, [0, 0.04, 0.03], [s * xSide, mirY, mirZ], [s,0,0], protM * 0.7, MAT.paint);
+    const mir = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), MAT.paint);
+    mir.position.set(s * (xSide + protM * 0.7 + 0.06), mirY, mirZ);
+    mir.scale.set(1.3, 1.0, 0.7);
+    mir.castShadow = mir.receiveShadow = true;
+    g.add(mir);
+
+    const hMat = hType === 'black' ? MAT.carbon
+               : hType === 'led'   ? MAT.headlight
+               : MAT.chrome;
+    const hSize = hType === 'flush' ? [0, 0.02, 0.16] : [0, 0.03, 0.18];
+    const hPro  = hType === 'flush' ? 0.002 : protHa;
+
+    embedBox(g, `HandleF_${s}`, hSize, [s * xSide, belt - 0.12, cF - 0.65], [s,0,0], hPro, hMat);
+    embedBox(g, `HandleR_${s}`, hSize, [s * xSide, belt - 0.12, cR + 0.85], [s,0,0], hPro, hMat);
+  }
+
+  return g;
+}
+
+function buildRimFace(parent, faceX, side, R){
+  const rimR = R * 0.72;
+  const style = CONFIG.rim.style || 'split-5';
+  const n = Math.max(3, Math.round(CONFIG.rim.spokes));
+  const sW = CONFIG.rim.spokeWidth || 0.06;
+  const sD = CONFIG.rim.spokeDepth || 0.025;
+  const concavity = CONFIG.rim.concavity || 0.02;
+
+  const barrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(rimR * 0.96, rimR * 0.96, 0.14, 48, 1, true),
+    MAT.barrel
+  );
+  barrel.rotation.z = Math.PI / 2;
+  barrel.position.x = faceX - side * 0.04;
+  parent.add(barrel);
+
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(rimR * 0.96, rimR * 0.036, 12, 48), MAT.rim);
+  lip.rotation.y = Math.PI / 2;
+  lip.position.x = faceX + side * 0.018;
+  parent.add(lip);
+
+  const chromeLip = new THREE.Mesh(new THREE.TorusGeometry(rimR * 0.99, rimR * 0.012, 8, 48), MAT.chrome);
+  chromeLip.rotation.y = Math.PI / 2;
+  chromeLip.position.x = faceX + side * 0.022;
+  parent.add(chromeLip);
+
+  const hubR = rimR * 0.26;
+  const hubX = faceX + side * (0.015 - concavity);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(hubR, hubR, 0.035, 32), MAT.rim);
+  hub.rotation.z = Math.PI / 2;
+  hub.position.x = hubX;
+  parent.add(hub);
+
+  const emblem = new THREE.Mesh(new THREE.CylinderGeometry(hubR * 0.44, hubR * 0.44, 0.040, 24), MAT.chrome);
+  emblem.rotation.z = Math.PI / 2;
+  emblem.position.x = hubX + side * 0.003;
+  parent.add(emblem);
+
+  for (let l = 0; l < 5; l++){
+    const la = 2 * Math.PI * l / 5;
+    const lug = new THREE.Mesh(new THREE.CylinderGeometry(hubR * 0.11, hubR * 0.11, 0.045, 6), MAT.chrome);
+    lug.rotation.z = Math.PI / 2;
+    lug.position.set(hubX + side * 0.003, hubR * 0.68 * Math.sin(la), hubR * 0.68 * Math.cos(la));
+    parent.add(lug);
+  }
+
+  const spokeLen = Math.max(0.05, (rimR * 0.94) - hubR);
+  const addSpoke = (angle, len, widthMult = 1.0, pitch = 0) => {
+    const pivot = new THREE.Object3D();
+    pivot.rotation.x = -angle;
+
+    const w = Math.max(0.01, sW * widthMult);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sD, w, len), MAT.rim);
+    m.castShadow = true;
+    m.rotation.y = side * (concavity * 3.5);
+    m.rotation.z = pitch;
+    m.position.set(faceX + side * (0.018 - concavity * 0.4), 0, hubR + len * 0.5);
+    pivot.add(m);
+    parent.add(pivot);
+  };
+
+  switch (style){
+    case 'turbine':
+      for (let i = 0; i < n; i++) addSpoke(2 * Math.PI * i / n, spokeLen, 1.25, 0.42);
+      break;
+    case 'mesh':
+      for (let i = 0; i < n; i++){
+        const base = 2 * Math.PI * i / n;
+        addSpoke(base - 0.12, spokeLen, 0.65, 0.14);
+        addSpoke(base + 0.12, spokeLen, 0.65, -0.14);
+        addSpoke(base, spokeLen * 0.65, 0.80, 0);
+      }
+      break;
+    case 'star-5':
+      for (let i = 0; i < 5; i++) addSpoke(2 * Math.PI * i / 5, spokeLen, 1.85, 0);
+      break;
+    case 'blade':
+      for (let i = 0; i < n; i++) addSpoke(2 * Math.PI * i / n, spokeLen, 2.3, 0.22);
+      break;
+    case 'split-5': {
+      const pairs = Math.max(2, Math.round(n / 2));
+      for (let i = 0; i < pairs; i++){
+        const base = 2 * Math.PI * i / pairs;
+        addSpoke(base - 0.08, spokeLen, 0.85, 0.04);
+        addSpoke(base + 0.08, spokeLen, 0.85, -0.04);
+      }
+      break;
+    }
+    default:
+      for (let i = 0; i < n; i++) addSpoke(2 * Math.PI * i / n, spokeLen, 1.0, 0);
+  }
+}
+
+function buildWheel(P, side, z){
+  const g = new THREE.Group();
+  g.name = 'Wheel';
+  g.position.set(side * P.wheelX, P.wheelR, z);
+
+  const R = P.wheelR;
+  const W = P.tireW * CONFIG.tire.size;
+
+  const tire = new THREE.Mesh(new THREE.CylinderGeometry(R, R, W, 64, 1), MAT.tire);
+  tire.rotation.z = Math.PI / 2;
+  tire.castShadow = tire.receiveShadow = true;
+  g.add(tire);
+
+  for (const s of [-1, 1]){
+    const ringOuter = new THREE.Mesh(new THREE.TorusGeometry(R * 0.93, R * 0.012, 8, 48), MAT.tire);
+    ringOuter.position.x = s * (W / 2 + 0.002);
+    ringOuter.rotation.y = Math.PI / 2;
+    ringOuter.castShadow = true;
+    g.add(ringOuter);
+
+    const ringInner = new THREE.Mesh(new THREE.TorusGeometry(R * 0.78, R * 0.009, 8, 48), MAT.tire);
+    ringInner.position.x = s * (W / 2 + 0.002);
+    ringInner.rotation.y = Math.PI / 2;
+    ringInner.castShadow = true;
+    g.add(ringInner);
+  }
+
+  const brake = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.53, R * 0.53, 0.03, 32), MAT.brake);
+  brake.rotation.z = Math.PI / 2;
+  brake.position.x = -side * 0.05;
+  g.add(brake);
+
+  const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.02, R * 0.40, R * 0.21), MAT.caliper);
+  caliper.position.set(-side * 0.05, R * 0.27, 0);
+  g.add(caliper);
+
+  buildRimFace(g, side * (W / 2 - 0.05), side, R);
+
+  const light = new THREE.PointLight(0xfff4e0, 0.5, 1.5, 2);
+  light.position.set(side * (W / 2), R * 0.5, 0);
+  g.add(light);
+
+  return g;
+}
+
+function buildWheels(P){
+  const group = new THREE.Group();
+  group.name = 'Wheels';
+  const list = [];
+  for (const sx of [-1, 1]){
+    for (const z of [P.frontAxleZ, P.rearAxleZ]){
+      const w = buildWheel(P, sx, z);
+      group.add(w);
+      list.push(w);
+    }
+  }
+  return { group, wheels: list };
+}
+
+const car = new THREE.Group();
+car.name = 'SingleCar';
+scene.add(car);
+
+const showroomGroup = new THREE.Group();
+showroomGroup.name = 'ShowroomGroup';
+scene.add(showroomGroup);
+let showroomMode = false;
+let wheels = [];
+let wheelGroup = null;
+let zoneHighlight = null;
+
+function disposeGroup(root){
+  root.traverse(o => {
+    if (o.isMesh && o.geometry) o.geometry.dispose();
+  });
+  while (root.children.length) root.remove(root.children[0]);
+}
+
+function zoneBounds(zone, P){
+  const b = P.bottomY, roof = P.roofY;
+  const x = P.halfW + 0.05;
+  const bumperF_depth = Math.min(0.65, Math.max(0.08, P.frontOverhang * 0.7));
+  const bumperR_depth = Math.min(0.65, Math.max(0.08, P.rearOverhang * 0.7));
+  const range = {
+    frontBumper: [P.zF - bumperF_depth, P.zF + 0.05],
+    hood:        [P.cabinFrontZ, P.zF - bumperF_depth],
+    cabin:       [P.cabinRearZ, P.cabinFrontZ],
+    trunk:       [P.zR + bumperR_depth, P.cabinRearZ],
+    rearBumper:  [P.zR - 0.05, P.zR + bumperR_depth],
+  }[zone];
+  const minZ = Math.min(range[0], range[1]);
+  const maxZ = Math.max(range[0], range[1]);
+  return { minX: -x, maxX: x, minY: b, maxY: roof + 0.05, minZ, maxZ };
+}
+
+function updateZoneHighlight(){
+  if (zoneHighlight){
+    car.remove(zoneHighlight);
+    zoneHighlight.geometry.dispose();
+    zoneHighlight.material.dispose();
+    zoneHighlight = null;
+  }
+  if (!CONFIG.selectedZone || showroomMode) return;
+  const P = derive(PRESETS[CONFIG.model]);
+  const B = zoneBounds(CONFIG.selectedZone, P);
+  const geo = new THREE.BoxGeometry(B.maxX - B.minX, B.maxY - B.minY, B.maxZ - B.minZ);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x0066ff, wireframe: true, transparent: true, opacity: 0.5 });
+  zoneHighlight = new THREE.Mesh(geo, mat);
+  zoneHighlight.position.set((B.minX + B.maxX) / 2, (B.minY + B.maxY) / 2, (B.minZ + B.maxZ) / 2);
+  car.add(zoneHighlight);
+}
+
+function buildCar(){
+  if (showroomMode) return;
+  const P = derive(PRESETS[CONFIG.model]);
+
+  disposeGroup(car);
+  wheels = [];
+  wheelGroup = null;
+  zoneHighlight = null;
+
+  car.add(buildBody(P));
+  car.add(buildCabin(P));
+  car.add(buildFrontDetails(P));
+  car.add(buildRearDetails(P));
+  car.add(buildSideDetails(P));
+  car.add(buildInterior(P));
+
+  const wg = buildWheels(P);
+  wheelGroup = wg.group;
+  wheels = wg.wheels;
+  car.add(wheelGroup);
+
+  controls.target.set(0, P.roofY * 0.5, 0);
+  updateZoneHighlight();
+  setStatus('✓ ' + PRESETS[CONFIG.model].label);
+}
+
+function rebuildWheels(){
+  if (!wheelGroup || showroomMode) return;
+  const P = derive(PRESETS[CONFIG.model]);
+  disposeGroup(wheelGroup);
+  car.remove(wheelGroup);
+  const wg = buildWheels(P);
+  wheelGroup = wg.group;
+  wheels = wg.wheels;
+  car.add(wheelGroup);
+}
+
+function buildShowroomCar(presetKey, posX){
+  const p = FIVE_CARS[presetKey];
+  if (!p) return null;
+
+  const originalConfig = JSON.parse(JSON.stringify(CONFIG));
+
+  for (const k of Object.keys(p.config)){
+    if (typeof p.config[k] === 'object' && !Array.isArray(p.config[k])){
+      Object.assign(CONFIG[k], p.config[k]);
+    } else {
+      CONFIG[k] = p.config[k];
+    }
+  }
+  CONFIG.model = p.model;
+  updateMaterials();
+
+  const P = derive(PRESETS[CONFIG.model]);
+  const carGrp = new THREE.Group();
+  carGrp.name = 'ShowroomCar_' + presetKey;
+  carGrp.userData.presetKey = presetKey;
+
+  carGrp.add(buildBody(P));
+  carGrp.add(buildCabin(P));
+  carGrp.add(buildFrontDetails(P));
+  carGrp.add(buildRearDetails(P));
+  carGrp.add(buildSideDetails(P));
+  carGrp.add(buildInterior(P));
+
+  const wg = buildWheels(P);
+  carGrp.add(wg.group);
+
+  carGrp.traverse(o => {
+    if (o.isMesh && o.material){
+      if (Array.isArray(o.material)) o.material = o.material.map(m => m.clone());
+      else o.material = o.material.clone();
+      o.userData.presetKey = presetKey;
+      o.userData.selectable = true;
+    }
+  });
+
+  carGrp.position.x = posX;
+
+  Object.assign(CONFIG, originalConfig);
+  updateMaterials();
+
+  return carGrp;
+}
+
+function buildShowroom(){
+  disposeGroup(showroomGroup);
+  const keys = ['phantom', 'supercar', 'offroad', 'monaco', 'urban'];
+  const spacing = 3.6;
+  const startX = -((keys.length - 1) * spacing) / 2;
+
+  keys.forEach((key, idx) => {
+    const c = buildShowroomCar(key, startX + idx * spacing);
+    if (c) showroomGroup.add(c);
+  });
+}
+
+function toggleShowroom(){
+  showroomMode = !showroomMode;
+  const btn = $('btnShowroom');
+  if (showroomMode){
+    btn.textContent = '🚗 Modo Editor (1 Coche)';
+    btn.classList.remove('highlight-btn');
+    car.visible = false;
+    if (zoneHighlight) zoneHighlight.visible = false;
+    buildShowroom();
+    controls.target.set(0, 0.8, 0);
+    camera.position.set(0, 5.0, 17.5);
+    setStatus('🏢 Showroom: Los 5 coches generados juntos');
+  } else {
+    btn.textContent = '🏢 Modo Showroom (Ver los 5 juntos)';
+    btn.classList.add('highlight-btn');
+    disposeGroup(showroomGroup);
+    car.visible = true;
+    if (zoneHighlight) zoneHighlight.visible = true;
+    controls.target.set(0, 0.75, 0);
+    camera.position.set(6.2, 3.2, 7.5);
+    buildCar();
+    setStatus('✓ ' + PRESETS[CONFIG.model].label);
+  }
+}
+
+function applyPresetCar(presetKey){
+  const p = FIVE_CARS[presetKey];
+  if (!p) return;
+
+  for (const k of Object.keys(p.config)){
+    if (typeof p.config[k] === 'object' && !Array.isArray(p.config[k])){
+      Object.assign(CONFIG[k], p.config[k]);
+    } else {
+      CONFIG[k] = p.config[k];
+    }
+  }
+  CONFIG.model = p.model;
+  applyPresetGlass(p.model);
+  updateMaterials();
+  syncUI();
+  markDirty();
+  setStatus('✓ Cargado: ' + p.name);
+}
+
+function applyPresetGlass(model){
+  const p = PRESETS[model];
+  CONFIG.glass.frontZ     = p.cabinFrontZ;
+  CONFIG.glass.rearZ      = p.cabinRearZ;
+  CONFIG.glass.roofFrontZ = p.roofFrontZ;
+  CONFIG.glass.roofRearZ  = p.roofRearZ;
+}
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+function zoneFromZ(z, P){
+  const bumperF_depth = Math.min(0.65, Math.max(0.08, P.frontOverhang * 0.7));
+  const bumperR_depth = Math.min(0.65, Math.max(0.08, P.rearOverhang * 0.7));
+  if (z > P.zF - bumperF_depth) return 'frontBumper';
+  if (z > P.cabinFrontZ)        return 'hood';
+  if (z > P.cabinRearZ)         return 'cabin';
+  if (z > P.zR + bumperR_depth) return 'trunk';
+  return 'rearBumper';
+}
+
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.target !== renderer.domElement) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+
+  if (showroomMode){
+    const hits = raycaster.intersectObjects(showroomGroup.children, true);
+    for (const hit of hits){
+      const pKey = hit.object.userData.presetKey;
+      if (pKey){
+        applyPresetCar(pKey);
+        $('carPresetSelect').value = pKey;
+        toggleShowroom();
+        return;
+      }
+    }
+    return;
+  }
+
+  const hits = raycaster.intersectObjects(car.children, true);
+  for (const hit of hits){
+    if (hit.object.userData.selectable){
+      const P = derive(PRESETS[CONFIG.model]);
+      const zone = zoneFromZ(hit.point.z, P);
+      CONFIG.selectedZone = zone;
+      $('zoneSelect').value = zone;
+      updateZoneHighlight();
+      renderZoneSliders();
+      return;
+    }
+  }
+});
+
+const $ = id => document.getElementById(id);
+function setStatus(txt){ $('status').textContent = txt; }
+let dirty = false;
+function markDirty(){ dirty = true; }
+
+const SLIDERS = [];
+function addSlider(id, outId, get, set, fmt, onChange, min, max, step){
+  const el = $(id);
+  const out = $(outId);
+  if (min !== undefined) el.min = min;
+  if (max !== undefined) el.max = max;
+  if (step !== undefined) el.step = step;
+
+  const apply = () => {
+    const v = parseFloat(el.value);
+    set(v);
+    out.textContent = fmt ? fmt(v) : v.toFixed(2);
+    if (onChange) onChange(v);
+  };
+  el.addEventListener('input', apply);
+  SLIDERS.push({
+    el, out,
+    sync(){ el.value = get(); out.textContent = fmt ? fmt(get()) : get().toFixed(2); },
+  });
+  return el;
+}
+
+const ZONE_PARAMS = {
+  frontBumper: [
+    { key: 'height', min: 0.0,  max: 1.2, step: 0.01, label: 'Altura frontal' },
+    { key: 'curve',  min: 0.0,  max: 5.0, step: 0.01, label: 'Curvatura morro' },
+    { key: 'length', min: 0.0,  max: 2.5, step: 0.01, label: 'Longitud voladizo' },
+  ],
+  hood: [
+    { key: 'height',     min: 0.5,  max: 1.5, step: 0.01, label: 'Altura capó' },
+    { key: 'length',     min: 0.3,  max: 2.5, step: 0.01, label: 'Long. eje ➔ cabina' },
+    { key: 'overhang',   min: 0.0,  max: 4.5, step: 0.01, label: 'Long. eje ➔ parachoques' },
+    { key: 'noseHeight', min: 0.3,  max: 1.3, step: 0.01, label: 'Altura punta/morro' },
+    { key: 'curve',      min: -0.8, max: 0.8, step: 0.02, label: 'Comba/Curvatura (0 = recto)' },
+  ],
+  cabin: [
+    { key: 'height', min: 0.65, max: 1.45, step: 0.01, label: 'Altura cabina (y asientos)' },
+    { key: 'length', min: 0.70, max: 1.40, step: 0.01, label: 'Longitud cabina' },
+  ],
+  trunk: [
+    { key: 'height',     min: 0.5,  max: 1.5, step: 0.01, label: 'Altura maletero' },
+    { key: 'length',     min: 0.5,  max: 2.5, step: 0.01, label: 'Long. eje ➔ cabina' },
+    { key: 'overhang',   min: 0.0,  max: 4.5, step: 0.01, label: 'Long. eje ➔ parachoques' },
+    { key: 'tailHeight', min: 0.3,  max: 1.3, step: 0.01, label: 'Altura punta cola' },
+    { key: 'curve',      min: -0.8, max: 0.8, step: 0.02, label: 'Comba/Curvatura' },
+  ],
+  rearBumper: [
+    { key: 'height', min: 0.0,  max: 1.2, step: 0.01, label: 'Altura trasera' },
+    { key: 'curve',  min: 0.0,  max: 5.0, step: 0.01, label: 'Curvatura trasera' },
+    { key: 'length', min: 0.0,  max: 2.5, step: 0.01, label: 'Longitud voladizo' },
+  ],
+};
+
+function renderZoneSliders(){
+  const container = $('zoneSliders');
+  container.innerHTML = '';
+  const zone = CONFIG.selectedZone;
+  const params = ZONE_PARAMS[zone] || [];
+
+  for (const p of params){
+    const row = document.createElement('div');
+    row.className = 'sl';
+    row.innerHTML = `<span>${p.label}</span>
+      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}"
+             value="${CONFIG.zones[zone][p.key]}" data-zone="${zone}" data-key="${p.key}">
+      <b>${CONFIG.zones[zone][p.key].toFixed(2)}</b>`;
+    container.appendChild(row);
+
+    const input = row.querySelector('input');
+    const out   = row.querySelector('b');
+
+    input.addEventListener('input', () => {
+      const v = parseFloat(input.value);
+      CONFIG.zones[zone][p.key] = v;
+      out.textContent = v.toFixed(2);
+
+      if (CONFIG.zones[zone].linked) {
+        if (p.key === 'length') {
+          CONFIG.zones[zone].overhang = v;
+          const otherInput = container.querySelector(`input[data-key="overhang"]`);
+          if (otherInput) {
+            otherInput.value = v;
+            otherInput.parentElement.querySelector('b').textContent = v.toFixed(2);
+          }
+        } else if (p.key === 'overhang') {
+          CONFIG.zones[zone].length = v;
+          const otherInput = container.querySelector(`input[data-key="length"]`);
+          if (otherInput) {
+            otherInput.value = v;
+            otherInput.parentElement.querySelector('b').textContent = v.toFixed(2);
+          }
+        }
+      }
+
+      updateZoneHighlight();
+      markDirty();
+    });
+  }
+
+  if (zone === 'hood' || zone === 'trunk') {
+    const linkRow = document.createElement('div');
+    linkRow.style.marginTop = '8px';
+    linkRow.innerHTML = `
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#444;user-select:none">
+        <input type="checkbox" id="linkExtension" ${CONFIG.zones[zone].linked ? 'checked' : ''}>
+        <span>🔗 Extensión simultánea (ambos sentidos)</span>
+      </label>
+    `;
+    container.appendChild(linkRow);
+
+    linkRow.querySelector('#linkExtension').addEventListener('change', e => {
+      CONFIG.zones[zone].linked = e.target.checked;
+      if (e.target.checked) {
+        CONFIG.zones[zone].overhang = CONFIG.zones[zone].length;
+        const oIn = container.querySelector('input[data-key="overhang"]');
+        if (oIn) {
+          oIn.value = CONFIG.zones[zone].length;
+          oIn.parentElement.querySelector('b').textContent = CONFIG.zones[zone].length.toFixed(2);
+        }
+        markDirty();
+      }
+    });
+  }
+}
+
+function bindUI(){
+  $('carPresetSelect').addEventListener('change', e => {
+    if (e.target.value) applyPresetCar(e.target.value);
+  });
+  $('btnShowroom').addEventListener('click', toggleShowroom);
+
+  const modelSel = $('model');
+  for (const [k, v] of Object.entries(PRESETS)){
+    const o = document.createElement('option');
+    o.value = k; o.textContent = v.label;
+    modelSel.appendChild(o);
+  }
+  modelSel.addEventListener('change', () => {
+    CONFIG.model = modelSel.value;
+    applyPresetGlass(modelSel.value);
+    updateZoneHighlight();
+    renderZoneSliders();
+    syncUI();
+    markDirty();
+  });
+
+  $('zoneSelect').addEventListener('change', e => {
+    CONFIG.selectedZone = e.target.value;
+    updateZoneHighlight();
+    renderZoneSliders();
+  });
+  renderZoneSliders();
+
+  // Suavizado y grosor pilares
+  addSlider('smoothing', 'vSmooth', () => CONFIG.smoothing, v => CONFIG.smoothing = v, v => v.toFixed(2), () => markDirty());
+  addSlider('pillarThick', 'vPThick', () => CONFIG.pillars.thick, v => CONFIG.pillars.thick = v, v => v.toFixed(2), () => markDirty());
+
+  // Pintura carrocería
+  $('paintColor').addEventListener('input', e => {
+    CONFIG.paint.color = e.target.value;
+    if (CONFIG.roofPaint.syncBodyColor) {
+      CONFIG.roofPaint.color = e.target.value;
+      $('roofPaintColor').value = e.target.value;
+    }
+    updateMaterials();
+  });
+  $('paintType').addEventListener('change', e => {
+    CONFIG.paint.type = e.target.value;
+    const p = PAINT_TYPES[CONFIG.paint.type];
+    CONFIG.paint.metalness = p.metalness;
+    CONFIG.paint.roughness = p.roughness;
+    CONFIG.paint.clearcoat = p.clearcoat;
+    CONFIG.paint.clearcoatRoughness = p.clearcoatRoughness;
+    updateMaterials();
+    syncUI();
+  });
+  addSlider('pMetal', 'vPMetal', () => CONFIG.paint.metalness, v => CONFIG.paint.metalness = v, v => v.toFixed(2), () => updateMaterials());
+  addSlider('pRough', 'vPRough', () => CONFIG.paint.roughness, v => CONFIG.paint.roughness = v, v => v.toFixed(2), () => updateMaterials());
+  addSlider('pClear', 'vPClear', () => CONFIG.paint.clearcoat, v => CONFIG.paint.clearcoat = v, v => v.toFixed(2), () => updateMaterials());
+
+  // Techo y cristales
+  $('roofPaintColor').addEventListener('input', e => {
+    CONFIG.roofPaint.color = e.target.value;
+    CONFIG.roofPaint.syncBodyColor = false;
+    $('syncRoofColor').checked = false;
+    updateMaterials();
+  });
+  $('syncRoofColor').addEventListener('change', e => {
+    CONFIG.roofPaint.syncBodyColor = e.target.checked;
+    if (e.target.checked){
+      CONFIG.roofPaint.color = CONFIG.paint.color;
+      $('roofPaintColor').value = CONFIG.paint.color;
+    }
+    updateMaterials();
+  });
+
+  $('glassColor').addEventListener('input', e => { CONFIG.glass.color = e.target.value; updateMaterials(); });
+  addSlider('glassOpacity', 'vGlass', () => CONFIG.glass.opacity, v => CONFIG.glass.opacity = v, v => v.toFixed(2), () => updateMaterials());
+  addSlider('glassBottom', 'vGBottom', () => CONFIG.glass.bottomOffset, v => CONFIG.glass.bottomOffset = v, v => v.toFixed(2), () => markDirty());
+  addSlider('glassFrontZ', 'vGFrontZ', () => CONFIG.glass.frontZ, v => CONFIG.glass.frontZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('glassRearZ', 'vGRearZ', () => CONFIG.glass.rearZ, v => CONFIG.glass.rearZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('roofCurve', 'vRoofCurve', () => CONFIG.glass.roofCurve, v => CONFIG.glass.roofCurve = v, v => v.toFixed(2), () => markDirty());
+  addSlider('roofGap', 'vRoofGap', () => CONFIG.glass.roofGap, v => CONFIG.glass.roofGap = v, v => v.toFixed(2), () => markDirty());
+  addSlider('roofYOffset', 'vRoofY', () => CONFIG.glass.roofYOffset, v => CONFIG.glass.roofYOffset = v, v => v.toFixed(2), () => markDirty());
+  addSlider('roofZOffset', 'vRoofZ', () => CONFIG.glass.roofZOffset, v => CONFIG.glass.roofZOffset = v, v => v.toFixed(2), () => markDirty());
+  addSlider('roofMetalX', 'vRMX', () => CONFIG.glass.roofMetalX, v => CONFIG.glass.roofMetalX = v, v => v.toFixed(2), () => markDirty());
+  addSlider('roofMetalZ', 'vRMZ', () => CONFIG.glass.roofMetalZ, v => CONFIG.glass.roofMetalZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('roofMetalY', 'vRMY', () => CONFIG.glass.roofMetalY, v => CONFIG.glass.roofMetalY = v, v => v.toFixed(3), () => markDirty());
+
+  // Ruedas y llantas
+  $('rimStyle').addEventListener('change', e => { CONFIG.rim.style = e.target.value; rebuildWheels(); });
+  $('tireTreadStyle').addEventListener('change', e => { CONFIG.tire.treadStyle = e.target.value; updateMaterials(); });
+  addSlider('tireBump', 'vTireBump', () => CONFIG.tire.bumpScale, v => CONFIG.tire.bumpScale = v, v => v.toFixed(2), () => updateMaterials());
+  addSlider('wheelRadius', 'vWRadius', () => CONFIG.wheelRadius, v => CONFIG.wheelRadius = v, v => v.toFixed(2), () => markDirty());
+  addSlider('rimSpokes', 'vSpokes', () => CONFIG.rim.spokes, v => CONFIG.rim.spokes = v, v => String(v | 0), () => rebuildWheels());
+  addSlider('spokeWidth', 'vSpokeW', () => CONFIG.rim.spokeWidth, v => CONFIG.rim.spokeWidth = v, v => v.toFixed(3), () => rebuildWheels());
+  addSlider('spokeDepth', 'vSpokeD', () => CONFIG.rim.spokeDepth, v => CONFIG.rim.spokeDepth = v, v => v.toFixed(3), () => rebuildWheels());
+  addSlider('spokeConcave', 'vSpokeConc', () => CONFIG.rim.concavity, v => CONFIG.rim.concavity = v, v => v.toFixed(3), () => rebuildWheels());
+  addSlider('wheelSpacer', 'vWSpacer', () => CONFIG.wheelSpacer, v => CONFIG.wheelSpacer = v, v => v.toFixed(2), () => markDirty());
+  addSlider('frontAxleOffset', 'vAxleF', () => CONFIG.frontAxleOffset, v => CONFIG.frontAxleOffset = v, v => v.toFixed(2), () => markDirty());
+  addSlider('rearAxleOffset',  'vAxleR', () => CONFIG.rearAxleOffset,  v => CONFIG.rearAxleOffset = v,  v => v.toFixed(2), () => markDirty());
+  $('rimColor').addEventListener('input', e => { CONFIG.rim.color = e.target.value; updateMaterials(); });
+  addSlider('wheelLight', 'vWLight', () => CONFIG.wheelLight, v => CONFIG.wheelLight = v, v => v.toFixed(1), () => updateMaterials());
+
+  // Faros delanteros
+  $('headType').addEventListener('change', e => { CONFIG.headlight.type = e.target.value; markDirty(); });
+  addSlider('headIntensity', 'vHead', () => CONFIG.headlight.emissiveIntensity, v => CONFIG.headlight.emissiveIntensity = v, v => v.toFixed(1), () => updateMaterials());
+  addSlider('headOffsetZ', 'vHOffZ', () => CONFIG.headlight.offsetZ, v => CONFIG.headlight.offsetZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('headOffsetY', 'vHOffY', () => CONFIG.headlight.offsetY, v => CONFIG.headlight.offsetY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('headRotX', 'vHRotX', () => CONFIG.headlight.rotX, v => CONFIG.headlight.rotX = v, v => v.toFixed(2), () => markDirty());
+  addSlider('headRotY', 'vHRotY', () => CONFIG.headlight.rotY, v => CONFIG.headlight.rotY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('headRotZ', 'vHRotZ', () => CONFIG.headlight.rotZ, v => CONFIG.headlight.rotZ = v, v => v.toFixed(2), () => markDirty());
+
+  // Faros traseros
+  $('tailType').addEventListener('change', e => { CONFIG.taillight.type = e.target.value; markDirty(); });
+  $('tailColor').addEventListener('input', e => { CONFIG.taillight.color = e.target.value; updateMaterials(); });
+  addSlider('tailIntensity', 'vTailInt', () => CONFIG.taillight.emissiveIntensity, v => CONFIG.taillight.emissiveIntensity = v, v => v.toFixed(1), () => updateMaterials());
+  addSlider('tailOffsetZ', 'vTOffZ', () => CONFIG.taillight.offsetZ, v => CONFIG.taillight.offsetZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('tailOffsetY', 'vTOffY', () => CONFIG.taillight.offsetY, v => CONFIG.taillight.offsetY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('tailRotX', 'vTRotX', () => CONFIG.taillight.rotX, v => CONFIG.taillight.rotX = v, v => v.toFixed(2), () => markDirty());
+  addSlider('tailRotY', 'vTRotY', () => CONFIG.taillight.rotY, v => CONFIG.taillight.rotY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('tailRotZ', 'vTRotZ', () => CONFIG.taillight.rotZ, v => CONFIG.taillight.rotZ = v, v => v.toFixed(2), () => markDirty());
+
+  // Parrilla y líneas
+  $('grilleType').addEventListener('change', e => { CONFIG.embeds.grille.type = e.target.value; markDirty(); });
+  $('grilleTexture').addEventListener('change', e => { CONFIG.embeds.grille.texture = e.target.value; updateMaterials(); markDirty(); });
+  $('btnToggleLines').addEventListener('click', () => { CONFIG.designLines.enabled = !CONFIG.designLines.enabled; markDirty(); });
+  addSlider('lineThick', 'vLineThick', () => CONFIG.designLines.thickness, v => CONFIG.designLines.thickness = v, v => v.toFixed(3), () => markDirty());
+
+  // Interior
+  $('dashboardType').addEventListener('change', e => { CONFIG.interior.dashboard = e.target.value; markDirty(); });
+  $('leatherColor').addEventListener('input', e => { CONFIG.interior.leatherColor = e.target.value; updateMaterials(); });
+  $('woodColor').addEventListener('input', e => { CONFIG.interior.woodColor = e.target.value; updateMaterials(); });
+  $('ambientColor').addEventListener('input', e => { CONFIG.interior.ambientColor = e.target.value; updateMaterials(); });
+
+  // Botones de acción
+  $('btnRandom').addEventListener('click', randomize);
+  $('btnReset').addEventListener('click', resetAll);
+  $('btnRotate').addEventListener('click', e => {
+    controls.autoRotate = !controls.autoRotate;
+    e.target.textContent = controls.autoRotate ? '⏸ Detener giro' : '▶ Girar cámara';
+  });
+  $('btnWheels').addEventListener('click', () => {
+    const start = performance.now();
+    (function spin(){
+      const t = performance.now() - start;
+      if (t > 1500) return;
+      for (const w of wheels) w.rotation.x = t * 0.012;
+      requestAnimationFrame(spin);
+    })();
+  });
+  $('btnExport').addEventListener('click', exportGLB);
+}
+
+function syncUI(){
+  $('model').value = CONFIG.model;
+  $('zoneSelect').value = CONFIG.selectedZone;
+  $('paintColor').value = CONFIG.paint.color;
+  $('paintType').value = CONFIG.paint.type;
+  $('roofPaintColor').value = CONFIG.roofPaint.color;
+  $('syncRoofColor').checked = CONFIG.roofPaint.syncBodyColor;
+  $('glassColor').value = CONFIG.glass.color;
+  $('rimStyle').value = CONFIG.rim.style;
+  $('tireTreadStyle').value = CONFIG.tire.treadStyle;
+  $('rimColor').value = CONFIG.rim.color;
+  $('headType').value = CONFIG.headlight.type;
+  $('tailType').value = CONFIG.taillight.type;
+  $('tailColor').value = CONFIG.taillight.color;
+  $('grilleType').value = CONFIG.embeds.grille.type;
+  $('grilleTexture').value = CONFIG.embeds.grille.texture;
+  $('dashboardType').value = CONFIG.interior.dashboard;
+  $('leatherColor').value = CONFIG.interior.leatherColor;
+  $('woodColor').value = CONFIG.interior.woodColor;
+  $('ambientColor').value = CONFIG.interior.ambientColor;
+  for (const s of SLIDERS) s.sync();
+  renderZoneSliders();
+}
+
+function randomize(){
+  const models = Object.keys(PRESETS);
+  CONFIG.model = models[Math.floor(Math.random() * models.length)];
+
+  const c = new THREE.Color().setHSL(Math.random(), 0.6, 0.4);
+  CONFIG.paint.color = '#' + c.getHexString();
+
+  if (Math.random() > 0.4){
+    const rC = new THREE.Color().setHSL(Math.random(), 0.5, 0.2);
+    CONFIG.roofPaint.color = '#' + rC.getHexString();
+    CONFIG.roofPaint.syncBodyColor = false;
+  } else {
+    CONFIG.roofPaint.syncBodyColor = true;
+    CONFIG.roofPaint.color = CONFIG.paint.color;
+  }
+
+  CONFIG.frontAxleOffset = (Math.random() - 0.5) * 0.5;
+  CONFIG.rearAxleOffset  = (Math.random() - 0.5) * 0.5;
+
+  CONFIG.zones.cabin.height = 0.85 + Math.random() * 0.35;
+  CONFIG.zones.cabin.length = 0.85 + Math.random() * 0.30;
+
+  updateMaterials();
+  syncUI();
+  markDirty();
+}
+
+function resetAll(){
+  Object.assign(CONFIG, JSON.parse(JSON.stringify(DEFAULTS)));
+  applyPresetGlass(CONFIG.model);
+  updateMaterials();
+  syncUI();
+  markDirty();
+}
+
+function exportGLB(){
+  setStatus('Exportando GLB…');
+  new GLTFExporter().parse(
+    showroomMode ? showroomGroup : car,
+    buf => {
+      const blob = new Blob([buf], { type: 'model/gltf-binary' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `car_${showroomMode ? 'showroom_5_cars' : CONFIG.model}.glb`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setStatus('✓ GLB exportado');
+      setTimeout(() => setStatus('✓ Listo'), 2000);
+    },
+    err => { console.error(err); setStatus('❌ Error al exportar'); },
+    { binary: true }
+  );
+}
+
+createMaterials();
+updateMaterials();
+applyPresetGlass(CONFIG.model);
+bindUI();
+syncUI();
+buildCar();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+(function animate(){
+  requestAnimationFrame(animate);
+  if (dirty){
+    dirty = false;
+    buildCar();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
