@@ -182,6 +182,24 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     pointer-events: none;
   }
+  .sub {
+    margin: 12px 0 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+  }
+  .grp > label.check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0 0;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #4b5563;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -229,6 +247,9 @@
     <label>Suavizado y Estructura</label>
     <div class="sl"><span>Suavidad</span><input type="range" id="smoothing" min="0" max="1" step="0.05"><b id="vSmooth"></b></div>
     <div class="sl"><span>Grosor pilares</span><input type="range" id="pillarThick" min="0.02" max="0.15" step="0.01"><b id="vPThick"></b></div>
+    <div class="sl"><span>Curvatura pilares y cristal</span><input type="range" id="pillarCurve" min="0" max="0.25" step="0.01"><b id="vPCurve"></b></div>
+    <div class="sl"><span>Redondez pilares</span><input type="range" id="pillarRound" min="0" max="1" step="0.05"><b id="vPRound"></b></div>
+    <div class="sl"><span>Hueco máx. de ventana</span><input type="range" id="pillarMaxWin" min="0.8" max="3.0" step="0.05"><b id="vPMaxWin"></b></div>
   </div>
 
   <div class="grp">
@@ -312,16 +333,12 @@
 
   <div class="grp">
     <label>Faros Delanteros</label>
-    <select id="headType">
-      <option value="block">Bloque estándar</option>
-      <option value="matrix">Matriz LED</option>
-      <option value="strip">Tira continua</option>
-      <option value="round">Redondos retro</option>
-      <option value="lens">Lente xenón</option>
-      <option value="quad">Cuádruple</option>
-      <option value="hyper">Hiper deportivo</option>
-      <option value="halo">Halo DRL</option>
-    </select>
+    <select id="headType"></select>
+    <select id="headDRL" style="margin-top:8px"></select>
+    <select id="headHousing" style="margin-top:8px"></select>
+    <div class="sl"><span>Tamaño</span><input type="range" id="headSize" min="0.5" max="1.8" step="0.01"><b id="vHSize"></b></div>
+    <div class="sl"><span>Ancho</span><input type="range" id="headWidth" min="0.5" max="2.0" step="0.01"><b id="vHWidth"></b></div>
+    <div class="sl"><span>Separación</span><input type="range" id="headSpacing" min="-0.35" max="0.25" step="0.01"><b id="vHSpacing"></b></div>
     <div class="sl"><span>Intensidad</span><input type="range" id="headIntensity" min="0" max="8" step="0.1"><b id="vHead"></b></div>
     <div class="sl"><span>Acercar (Z)</span><input type="range" id="headOffsetZ" min="-0.2" max="0.2" step="0.01"><b id="vHOffZ"></b></div>
     <div class="sl"><span>Posición Y</span><input type="range" id="headOffsetY" min="-0.3" max="0.3" step="0.01"><b id="vHOffY"></b></div>
@@ -353,13 +370,7 @@
 
   <div class="grp">
     <label>Parrilla Delantera y Embebidos</label>
-    <select id="grilleType">
-      <option value="slats">Lamas verticales</option>
-      <option value="bars-h">Barras horizontales</option>
-      <option value="honeycomb">Panal (honeycomb)</option>
-      <option value="mesh">Malla perforada</option>
-      <option value="solid">Panel liso</option>
-    </select>
+    <select id="grilleType"></select>
     <select id="grilleTexture" style="margin-top:8px">
       <option value="honeycomb">Textura panal</option>
       <option value="perforated">Textura perforada</option>
@@ -368,6 +379,52 @@
       <option value="brushedBlack">Textura metal cepillado</option>
       <option value="none">Sin textura</option>
     </select>
+    <div class="sl"><span>Ancho parrilla</span><input type="range" id="grilleWidth" min="0.4" max="1.4" step="0.01"><b id="vGrW"></b></div>
+    <div class="sl"><span>Alto parrilla</span><input type="range" id="grilleHeight" min="0.4" max="2.2" step="0.01"><b id="vGrH"></b></div>
+    <div class="sl"><span>Altura parrilla</span><input type="range" id="grilleOffsetY" min="-0.20" max="0.20" step="0.01"><b id="vGrY"></b></div>
+    <label class="check"><input type="checkbox" id="grilleEmblem"> Emblema central</label>
+  </div>
+
+  <div class="grp">
+    <label>Accesorios Exteriores</label>
+    <div class="sub">Paragolpes delantero</div>
+    <select id="accFrontBumper"></select>
+    <div class="sl"><span>Altura</span><input type="range" id="accFBY" min="-0.20" max="0.25" step="0.01"><b id="vAccFBY"></b></div>
+    <div class="sl"><span>Saliente</span><input type="range" id="accFBZ" min="-0.10" max="0.25" step="0.01"><b id="vAccFBZ"></b></div>
+    <div class="sl"><span>Ancho</span><input type="range" id="accFBW" min="0.6" max="1.15" step="0.01"><b id="vAccFBW"></b></div>
+
+    <div class="sub">Paragolpes trasero</div>
+    <select id="accRearBumper"></select>
+    <div class="sl"><span>Altura</span><input type="range" id="accRBY" min="-0.20" max="0.25" step="0.01"><b id="vAccRBY"></b></div>
+    <div class="sl"><span>Saliente</span><input type="range" id="accRBZ" min="-0.10" max="0.25" step="0.01"><b id="vAccRBZ"></b></div>
+    <div class="sl"><span>Ancho</span><input type="range" id="accRBW" min="0.6" max="1.15" step="0.01"><b id="vAccRBW"></b></div>
+
+    <div class="sub">Tubos de escape</div>
+    <select id="exhaustType"></select>
+    <div class="sl"><span>Altura</span><input type="range" id="exhaustY" min="-0.10" max="0.25" step="0.01"><b id="vExY"></b></div>
+    <div class="sl"><span>Separación</span><input type="range" id="exhaustSpacing" min="-0.30" max="0.30" step="0.01"><b id="vExSp"></b></div>
+    <div class="sl"><span>Diámetro</span><input type="range" id="exhaustSize" min="0.5" max="2.0" step="0.05"><b id="vExSz"></b></div>
+
+    <div class="sub">Manillas de puerta</div>
+    <select id="handleType"></select>
+    <div class="sl"><span>Altura</span><input type="range" id="handleY" min="-0.20" max="0.08" step="0.01"><b id="vHdY"></b></div>
+    <div class="sl"><span>Posición</span><input type="range" id="handleZ" min="-0.40" max="0.40" step="0.01"><b id="vHdZ"></b></div>
+
+    <div class="sub">Retrovisores</div>
+    <select id="mirrorType"></select>
+
+    <div class="sub">Alerón</div>
+    <select id="accSpoiler"></select>
+    <div class="sl"><span>Altura</span><input type="range" id="spoilerY" min="-0.10" max="0.30" step="0.01"><b id="vSpY"></b></div>
+    <div class="sl"><span>Posición</span><input type="range" id="spoilerZ" min="-0.30" max="0.30" step="0.01"><b id="vSpZ"></b></div>
+    <div class="sl"><span>Ancho</span><input type="range" id="spoilerW" min="0.5" max="1.1" step="0.01"><b id="vSpW"></b></div>
+
+    <div class="sub">Techo, laterales y frontal</div>
+    <select id="accRoofRack"></select>
+    <select id="accSideSteps" style="margin-top:8px"></select>
+    <select id="accFogLights" style="margin-top:8px"></select>
+    <select id="accAntenna" style="margin-top:8px"></select>
+    <select id="accHoodScoop" style="margin-top:8px"></select>
   </div>
 
   <div class="grp">
@@ -491,7 +548,7 @@ const CONFIG = {
   selectedZone: 'hood',
   smoothing: 0.35,
 
-  pillars: { thick: 0.06 },
+  pillars: { thick: 0.06, curve: 0.06, round: 0.5, maxWindow: 1.6 },
   designLines: { enabled: true, thickness: 0.015, random: false },
 
   // Ejes independientes del centro sin alterar el tamaño de la cabina
@@ -570,6 +627,11 @@ const CONFIG = {
     rotX: 0.0,
     rotY: 0.0,
     rotZ: 0.0,
+    size: 1.0,
+    width: 1.0,
+    spacing: 0.0,
+    drl: 'none',
+    housing: 'none',
   },
 
   taillight: {
@@ -586,13 +648,25 @@ const CONFIG = {
   chrome: { color: '#eaeaf0', roughness: 0.08 },
 
   embeds: {
-    grille:    { type: 'slats',     protrudeZ: 0.003, texture: 'honeycomb' },
+    grille:    { type: 'slats',     protrudeZ: 0.003, texture: 'honeycomb', width: 1.0, height: 1.0, offsetY: 0.0, emblem: true },
     headlight: { protrudeZ: 0.0 },
     taillight: { protrudeZ: 0.0 },
-    handle:    { type: 'chrome',    protrudeX: 0.01 },
-    mirror:    { protrudeX: 0.060 },
+    handle:    { type: 'chrome',    protrudeX: 0.01, offsetY: 0.0, offsetZ: 0.0 },
+    mirror:    { type: 'standard',  protrudeX: 0.060 },
     intake:    { protrudeZ: 0.003 },
-    exhaust:   { type: 'dual',      protrudeZ: 0.015 },
+    exhaust:   { type: 'dual',      protrudeZ: 0.015, offsetY: 0.0, spacing: 0.0, size: 1.0 },
+  },
+
+  // Piezas montadas sobre la carrocería; offsetY/offsetZ/width colocan cada una
+  accessories: {
+    frontBumper: { type: 'integrated', offsetY: 0.0, offsetZ: 0.0, width: 1.0 },
+    rearBumper:  { type: 'integrated', offsetY: 0.0, offsetZ: 0.0, width: 1.0 },
+    spoiler:     { type: 'none', offsetY: 0.0, offsetZ: 0.0, width: 1.0 },
+    roofRack:    { type: 'none' },
+    sideSteps:   { type: 'none' },
+    fogLights:   { type: 'none' },
+    antenna:     { type: 'none' },
+    hoodScoop:   { type: 'none' },
   },
 
   interior: {
@@ -682,9 +756,10 @@ const FIVE_CARS = {
       glass: { roofCurve: 0.10, opacity: 0.30, roofMetalX: 0.02, roofMetalZ: 0.02 },
       rim: { style: 'turbine', spokes: 14, spokeWidth: 0.06, spokeDepth: 0.025, concavity: 0.02, color: '#cbd5e1' },
       tire: { treadStyle: 'sport', bumpScale: 0.10 },
-      headlight: { type: 'strip', emissiveIntensity: 4.5 },
+      headlight: { type: 'slim', drl: 'bar', emissiveIntensity: 4.5 },
       taillight: { type: 'bar', emissiveIntensity: 4.0 },
-      embeds: { grille: { type: 'solid', texture: 'carbon' }, exhaust: { type: 'none' } },
+      embeds: { grille: { type: 'none', texture: 'carbon' }, exhaust: { type: 'none' }, handle: { type: 'popout' }, mirror: { type: 'camera' } },
+      accessories: { rearBumper: { type: 'diffuser' }, spoiler: { type: 'lip' }, antenna: { type: 'shark' } },
       interior: { dashboard: 'futuristic', leatherColor: '#1e293b', ambientColor: '#22d3ee' },
     }
   },
@@ -709,9 +784,10 @@ const FIVE_CARS = {
       glass: { roofCurve: 0.03, opacity: 0.40, roofMetalX: 0.15, roofMetalZ: 0.10 },
       rim: { style: 'multi-spoke', spokes: 5, spokeWidth: 0.08, spokeDepth: 0.03, concavity: 0.02, color: '#94a3b8' },
       tire: { treadStyle: 'all-terrain', bumpScale: 0.18 },
-      headlight: { type: 'strip', emissiveIntensity: 4.2 },
+      headlight: { type: 'pixel', housing: 'black', emissiveIntensity: 4.2 },
       taillight: { type: 'bar', emissiveIntensity: 3.6 },
-      embeds: { grille: { type: 'solid', texture: 'carbon' }, exhaust: { type: 'none' } },
+      embeds: { grille: { type: 'solid', texture: 'carbon', width: 0.9 }, exhaust: { type: 'none' }, handle: { type: 'flush' } },
+      accessories: { roofRack: { type: 'rails' }, fogLights: { type: 'strip' }, antenna: { type: 'shark' } },
       interior: { dashboard: 'minimal', leatherColor: '#1f2937', ambientColor: '#38bdf8' },
     }
   },
@@ -734,9 +810,10 @@ const FIVE_CARS = {
       glass: { roofCurve: 0.06, opacity: 0.30, roofMetalX: 0.10, roofMetalZ: 0.10 },
       rim: { style: 'mesh', spokes: 8, spokeWidth: 0.07, spokeDepth: 0.03, concavity: 0.02, color: '#f8fafc' },
       tire: { treadStyle: 'sport', bumpScale: 0.08 },
-      headlight: { type: 'round', emissiveIntensity: 3.5 },
+      headlight: { type: 'projector', housing: 'chrome', emissiveIntensity: 3.5 },
       taillight: { type: 'round', emissiveIntensity: 3.0 },
-      embeds: { grille: { type: 'bars-h', texture: 'none' }, exhaust: { type: 'none' } },
+      embeds: { grille: { type: 'oval', texture: 'none', width: 0.7 }, exhaust: { type: 'single' }, handle: { type: 'classic' }, mirror: { type: 'classic' } },
+      accessories: { frontBumper: { type: 'chrome' }, rearBumper: { type: 'chrome' }, antenna: { type: 'rod' } },
       interior: { dashboard: 'minimal', leatherColor: '#27272a', ambientColor: '#f97316' },
     }
   },
@@ -759,9 +836,10 @@ const FIVE_CARS = {
       glass: { roofCurve: 0.10, opacity: 0.35, roofMetalX: 0.08, roofMetalZ: 0.08 },
       rim: { style: 'split-5', spokes: 5, spokeWidth: 0.09, spokeDepth: 0.03, concavity: 0.03, color: '#e2e8f0' },
       tire: { treadStyle: 'sport', bumpScale: 0.11 },
-      headlight: { type: 'matrix', emissiveIntensity: 4.6 },
+      headlight: { type: 'arrow', drl: 'line', emissiveIntensity: 4.6 },
       taillight: { type: 'bar', emissiveIntensity: 4.4 },
-      embeds: { grille: { type: 'solid', texture: 'brushedBlack' }, exhaust: { type: 'dual' } },
+      embeds: { grille: { type: 'shield', texture: 'honeycomb', width: 0.8, height: 1.1 }, exhaust: { type: 'quad' }, handle: { type: 'flush' }, mirror: { type: 'sport' } },
+      accessories: { frontBumper: { type: 'sport' }, rearBumper: { type: 'diffuser' }, spoiler: { type: 'lip' }, antenna: { type: 'shark' } },
       interior: { dashboard: 'sport', leatherColor: '#0f172a', ambientColor: '#3b82f6' },
     }
   },
@@ -784,9 +862,10 @@ const FIVE_CARS = {
       glass: { roofCurve: 0.02, opacity: 0.35, roofMetalX: 0.10, roofMetalZ: 0.10 },
       rim: { style: 'blade', spokes: 6, spokeWidth: 0.08, spokeDepth: 0.03, concavity: 0.02, color: '#f8fafc' },
       tire: { treadStyle: 'sport', bumpScale: 0.09 },
-      headlight: { type: 'round', emissiveIntensity: 3.8 },
+      headlight: { type: 'lightbar', emissiveIntensity: 3.8 },
       taillight: { type: 'bar', emissiveIntensity: 3.2 },
-      embeds: { grille: { type: 'bars-h', texture: 'none' }, exhaust: { type: 'none' } },
+      embeds: { grille: { type: 'none', texture: 'none' }, exhaust: { type: 'none' }, handle: { type: 'pull' } },
+      accessories: { roofRack: { type: 'rack' }, antenna: { type: 'shark' } },
       interior: { dashboard: 'minimal', leatherColor: '#334155', ambientColor: '#a3e635' },
     }
   }
@@ -1204,6 +1283,9 @@ function createMaterials(){
   MAT.panelGap   = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.2 });
   MAT.grilleBase = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.5, metalness: 0.6 });
   MAT.floor      = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.85 });
+  MAT.steel      = new THREE.MeshStandardMaterial({ color: 0x1b1c1f, roughness: 0.65, metalness: 0.55 });
+  MAT.rubber     = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.92 });
+  MAT.alu        = new THREE.MeshStandardMaterial({ color: 0xb9bdc4, roughness: 0.35, metalness: 0.9 });
 
   MAT.carbon.map  = TEXTURES.carbonWeave();
   MAT.wood.map    = TEXTURES.woodGrain();
@@ -1305,29 +1387,123 @@ function addBox(parent, name, size, pos, mat, rot){
   return m;
 }
 
-function addQuad(parent, name, corners, mat){
-  const [a, b, c, d] = corners;
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
-    ...a, ...b, ...c, ...a, ...c, ...d,
-  ]), 3));
-  g.computeVertexNormals();
-  const m = new THREE.Mesh(g, mat);
-  m.name = name;
-  parent.add(m);
-  return m;
+function addMesh(parent, name, mesh){
+  mesh.name = name;
+  mesh.castShadow = mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
 }
 
-function addPillar(parent, name, x, y1, z1, y2, z2, thick, mat = MAT.paint){
-  const L = Math.hypot(y2 - y1, z2 - z1);
-  const ang = Math.atan2(-(y2 - y1), z2 - z1);
-  const m = new THREE.Mesh(new THREE.BoxGeometry(0.06, thick, L), mat);
-  m.position.set(x, (y1 + y2) / 2, (z1 + z2) / 2);
-  m.rotation.x = ang;
-  m.name = name;
-  m.castShadow = m.receiveShadow = true;
-  parent.add(m);
-  return m;
+// Cilindro entre dos puntos (tubos de defensas, varillas, soportes)
+function addTubeBetween(parent, name, a, b, r, mat){
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, dir.length(), 16), mat);
+  m.position.copy(a).addScaledVector(dir, 0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  return addMesh(parent, name, m);
+}
+
+// Sección de rectángulo redondeado para pilares y largueros. round: 0 = arista viva, 1 = redonda.
+// Cada punto es [u, v, nu, nv]: posición y normal en el plano de la sección
+function roundedRectSection(width, thick, round){
+  const hu = width / 2, hv = thick / 2;
+  const r = THREE.MathUtils.clamp(round, 0, 1) * Math.min(hu, hv);
+  const K = 4;
+  const pts = [];
+  const centers = [[hu - r, hv - r], [-hu + r, hv - r], [-hu + r, -hv + r], [hu - r, -hv + r]];
+  centers.forEach(([cu, cv], q) => {
+    for (let k = 0; k <= K; k++){
+      const a = (q + k / K) * Math.PI / 2;
+      pts.push([cu + r * Math.cos(a), cv + r * Math.sin(a), Math.cos(a), Math.sin(a)]);
+    }
+  });
+  return pts;
+}
+
+// Barre una sección a lo largo de un camino. axis es el eje fijo de la sección (X para pilares y
+// largueros laterales, Z para los travesaños); el otro eje sigue la normal del camino
+function sweepSection(parent, name, path, section, axis, mat){
+  const pos = [], nor = [], idx = [];
+  const n = path.length, m = section.length;
+  const frames = [];
+  for (let i = 0; i < n; i++){
+    const T = new THREE.Vector3().subVectors(path[Math.min(n - 1, i + 1)], path[Math.max(0, i - 1)]).normalize();
+    const N = new THREE.Vector3().crossVectors(T, axis).normalize();
+    frames.push({ T, N });
+    for (const [u, v, nu, nv] of section){
+      pos.push(path[i].x + axis.x * u + N.x * v, path[i].y + axis.y * u + N.y * v, path[i].z + axis.z * u + N.z * v);
+      nor.push(axis.x * nu + N.x * nv, axis.y * nu + N.y * nv, axis.z * nu + N.z * nv);
+    }
+  }
+  for (let i = 0; i < n - 1; i++){
+    for (let j = 0; j < m; j++){
+      const a = i * m + j, b = i * m + (j + 1) % m, c = (i + 1) * m + j, d = (i + 1) * m + (j + 1) % m;
+      idx.push(a, b, c, b, d, c);
+    }
+  }
+  // Tapas en los extremos
+  for (const [i, sign] of [[0, -1], [n - 1, 1]]){
+    const { T, N } = frames[i];
+    const base = pos.length / 3;
+    pos.push(path[i].x, path[i].y, path[i].z);
+    nor.push(T.x * sign, T.y * sign, T.z * sign);
+    for (const [u, v] of section){
+      pos.push(path[i].x + axis.x * u + N.x * v, path[i].y + axis.y * u + N.y * v, path[i].z + axis.z * u + N.z * v);
+      nor.push(T.x * sign, T.y * sign, T.z * sign);
+    }
+    for (let j = 0; j < m; j++) idx.push(base, base + 1 + j, base + 1 + (j + 1) % m);
+  }
+  // Cada triángulo mira hacia su normal declarada, sin depender del sentido del camino
+  const pa = new THREE.Vector3(), pb = new THREE.Vector3(), pc = new THREE.Vector3(), nv = new THREE.Vector3();
+  for (let k = 0; k < idx.length; k += 3){
+    const a = idx[k], b = idx[k + 1], c = idx[k + 2];
+    pa.fromArray(pos, a * 3); pb.fromArray(pos, b * 3).sub(pa); pc.fromArray(pos, c * 3).sub(pa);
+    nv.set(nor[a * 3] + nor[b * 3] + nor[c * 3], nor[a * 3 + 1] + nor[b * 3 + 1] + nor[c * 3 + 1], nor[a * 3 + 2] + nor[b * 3 + 2] + nor[c * 3 + 2]);
+    if (pb.cross(pc).dot(nv) < 0){ idx[k + 1] = c; idx[k + 2] = b; }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setIndex(idx);
+  return addMesh(parent, name, new THREE.Mesh(geo, mat));
+}
+
+// Camino de un pilar en el plano x = cte: Bézier cuadrática de (y0, z0) a (y1, z1).
+// bow > 0 lo arquea hacia fuera del habitáculo (delante/arriba en el pilar A, detrás/arriba en el C)
+function bowedPath(x, y0, z0, y1, z1, bow, steps = 16){
+  const cz = (z0 + z1) / 2 + (y1 - y0) * bow;
+  const cy = (y0 + y1) / 2 - (z1 - z0) * bow;
+  const pts = [];
+  for (let i = 0; i <= steps; i++){
+    const t = i / steps, a = (1 - t) * (1 - t), m = 2 * (1 - t) * t, c = t * t;
+    pts.push(new THREE.Vector3(x, a * y0 + m * cy + c * y1, a * z0 + m * cz + c * z1));
+  }
+  return pts;
+}
+
+// Altura del techo en (x, z): arco longitudinal y bombeo lateral de la chapa del techo
+function roofSurfaceY(P, x, z){
+  const rF = P.roofFrontZ, rR = P.roofRearZ;
+  const rCurve = CONFIG.glass.roofCurve || 0.0;
+  const tZ = THREE.MathUtils.clamp((rF - z) / Math.max(0.01, rF - rR), 0, 1);
+  const normX = THREE.MathUtils.clamp(Math.abs(x) / Math.max(0.1, P.cabinW + 0.02), 0, 1);
+  return P.roofY + 4 * tZ * (1 - tZ) * rCurve + (1 - normX * normX) * (rCurve * 0.35);
+}
+
+// Línea superior del capó y del maletero en z (la misma que dibuja el perfil lateral)
+function hoodTopY(P, z){
+  const b = P.bottomY, fB = P.frontBeltY, cF = P.cabinFrontZ;
+  const t = THREE.MathUtils.clamp((z - cF) / Math.max(0.05, P.hoodFrontZ - cF), 0, 1);
+  const noseH = CONFIG.zones.hood.noseHeight !== undefined ? CONFIG.zones.hood.noseHeight : 1.0;
+  const linearY = THREE.MathUtils.lerp(fB, b + (fB - b) * noseH, t);
+  return linearY + 4 * t * (1 - t) * (CONFIG.zones.hood.curve || 0) * (fB - b) * 0.35;
+}
+
+function trunkTopY(P, z){
+  const b = P.bottomY, rB = P.rearBeltY, cR = P.cabinRearZ;
+  const t = THREE.MathUtils.clamp((cR - z) / Math.max(0.05, cR - P.trunkRearZ), 0, 1);
+  const linearY = THREE.MathUtils.lerp(rB, b + (rB - b) * CONFIG.zones.trunk.tailHeight, t);
+  return linearY + 4 * t * (1 - t) * (CONFIG.zones.trunk.curve || 0) * (rB - b) * 0.35;
 }
 
 function addPanelGap(parent, name, size, pos, rot){
@@ -1429,21 +1605,8 @@ function bodyProfilePoints(P){
   const fOver = P.frontBumperLen;
   const rOver = P.rearBumperLen;
 
-  function getHoodY(z){
-    const t = THREE.MathUtils.clamp((z - cF) / hoodSpan, 0, 1);
-    const targetNoseY = b + (fB - b) * (CONFIG.zones.hood.noseHeight !== undefined ? CONFIG.zones.hood.noseHeight : 1.0);
-    const linearY = THREE.MathUtils.lerp(fB, targetNoseY, t);
-    const bulge = 4 * t * (1 - t) * (CONFIG.zones.hood.curve || 0) * (fB - b) * 0.35;
-    return linearY + bulge;
-  }
-
-  function getTrunkY(z){
-    const t = THREE.MathUtils.clamp((cR - z) / trunkSpan, 0, 1);
-    const targetTailY = b + (rB - b) * CONFIG.zones.trunk.tailHeight;
-    const linearY = THREE.MathUtils.lerp(rB, targetTailY, t);
-    const bulge = 4 * t * (1 - t) * (CONFIG.zones.trunk.curve || 0) * (rB - b) * 0.35;
-    return linearY + bulge;
-  }
+  function getHoodY(z){ return hoodTopY(P, z); }
+  function getTrunkY(z){ return trunkTopY(P, z); }
 
   const noseTopY = getHoodY(zF - 0.02);
   const tailTopY = getTrunkY(zR + 0.02);
@@ -1627,10 +1790,11 @@ function buildCabin(P){
   g.name = 'Cabin';
 
   const cw = P.cabinW;
-  const belt = P.beltY, roof = P.roofY;
+  const belt = P.beltY;
   const cF = P.cabinFrontZ, cR = P.cabinRearZ;
   const rF = P.roofFrontZ,  rR = P.roofRearZ;
   const pThick = CONFIG.pillars.thick;
+  const bow = CONFIG.pillars.curve;
 
   const roofGap = CONFIG.glass.roofGap;
   const gBottom = belt + CONFIG.glass.bottomOffset;
@@ -1645,15 +1809,8 @@ function buildCabin(P){
   const gZr = Math.min(rF - 0.01, rR + totalZ * metalZ * 0.5);
 
   const oX = cw + 0.02;
-  const rCurve = CONFIG.glass.roofCurve || 0.0;
-
-  function getRoofY(x, z){
-    const tZ = THREE.MathUtils.clamp((rF - z) / Math.max(0.01, rF - rR), 0, 1);
-    const archZ = 4 * tZ * (1 - tZ) * rCurve;
-    const normX = THREE.MathUtils.clamp(Math.abs(x) / Math.max(0.1, oX), 0, 1);
-    const crownX = (1 - normX * normX) * (rCurve * 0.35);
-    return roof + archZ + crownX;
-  }
+  const getRoofY  = (x, z) => roofSurfaceY(P, x, z);
+  const glassTopY = (x, z) => getRoofY(x, z) - roofGap - 0.01;
 
   function addCurvedSurface(name, xMin, xMax, zMin, zMax, xSegs, zSegs, mat, yOffset = 0){
     const geo = new THREE.BufferGeometry();
@@ -1706,73 +1863,113 @@ function buildCabin(P){
     addCurvedSurface('PanoramicRoof', -gX, gX, gZr, gZf, 12, 16, MAT.roofGlass);
   }
 
+  // Parabrisas y luneta: una columna por cada x que sigue el mismo arco que los pilares A y C
   const gw = cw - 0.005;
-  const wsGeo = new THREE.BufferGeometry();
-  const wsPos = [], wsInd = [];
-  const wsSegs = 8;
-  for (let ix = 0; ix <= wsSegs; ix++){
-    const tx = ix / wsSegs;
-    const x = -gw + 2 * gw * tx;
-    const yTopC = getRoofY(x, rF) - roofGap - 0.01;
-    wsPos.push(x, gBottom, cF);
-    wsPos.push(x, yTopC, rF);
+  function addGlassSheet(name, columnAt){
+    const xSegs = 8;
+    const cols = [];
+    for (let ix = 0; ix <= xSegs; ix++) cols.push(columnAt(-gw + 2 * gw * ix / xSegs));
+    const rows = cols[0].length;
+    const pos = [], ind = [];
+    for (const col of cols) for (const p of col) pos.push(p.x, p.y, p.z);
+    for (let ix = 0; ix < xSegs; ix++){
+      for (let j = 0; j < rows - 1; j++){
+        const a = ix * rows + j, b = a + 1, c = a + rows, d = c + 1;
+        ind.push(a, c, b, b, c, d);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(ind);
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, MAT.glass);
+    mesh.name = name;
+    g.add(mesh);
   }
-  for (let ix = 0; ix < wsSegs; ix++){
-    const i0 = ix * 2, i1 = i0 + 1, i2 = (ix + 1) * 2, i3 = i2 + 1;
-    wsInd.push(i0, i2, i1);
-    wsInd.push(i2, i3, i1);
-  }
-  wsGeo.setAttribute('position', new THREE.Float32BufferAttribute(wsPos, 3));
-  wsGeo.setIndex(wsInd);
-  wsGeo.computeVertexNormals();
-  const wsMesh = new THREE.Mesh(wsGeo, MAT.glass);
-  wsMesh.name = 'Windshield';
-  g.add(wsMesh);
+  addGlassSheet('Windshield', x => bowedPath(x, gBottom, cF, glassTopY(x, rF), rF, bow, 10));
+  addGlassSheet('RearWindow', x => bowedPath(x, glassTopY(x, rR), rR, gBottom, cR, bow, 10));
 
-  const rwGeo = new THREE.BufferGeometry();
-  const rwPos = [], rwInd = [];
-  for (let ix = 0; ix <= wsSegs; ix++){
-    const tx = ix / wsSegs;
-    const x = -gw + 2 * gw * tx;
-    const yTopC = getRoofY(x, rR) - roofGap - 0.01;
-    rwPos.push(x, gBottom, cR);
-    rwPos.push(x, yTopC, rR);
+  // Pilares verticales: el B del modelo y uno más en cada hueco que pase de maxWindow.
+  // Solo cabe un pilar recto donde el hueco tiene a la vez techo y base (entre rR y rF)
+  const bPillars = P.bPillar ? [cF + (cR - cF) * 0.47] : [];
+  const lowEdges = [cF, ...bPillars, cR];
+  const topEdges = [rF, ...bPillars, rR];
+  const extraPillars = [];
+  for (let i = 0; i < lowEdges.length - 1; i++){
+    const len = lowEdges[i] - lowEdges[i + 1];
+    const parts = Math.ceil(len / CONFIG.pillars.maxWindow - 1e-6);
+    const hi = Math.min(lowEdges[i], topEdges[i]) - 0.10;
+    const lo = Math.max(lowEdges[i + 1], topEdges[i + 1]) + 0.10;
+    for (let k = 1; k < parts && hi > lo; k++){
+      const z = THREE.MathUtils.clamp(lowEdges[i] - len * k / parts, lo, hi);
+      if (extraPillars.every(e => Math.abs(e - z) > 0.15)) extraPillars.push(z);
+    }
   }
-  for (let ix = 0; ix < wsSegs; ix++){
-    const i0 = ix * 2, i1 = i0 + 1, i2 = (ix + 1) * 2, i3 = i2 + 1;
-    rwInd.push(i0, i1, i2);
-    rwInd.push(i2, i1, i3);
-  }
-  rwGeo.setAttribute('position', new THREE.Float32BufferAttribute(rwPos, 3));
-  rwGeo.setIndex(rwInd);
-  rwGeo.computeVertexNormals();
-  const rwMesh = new THREE.Mesh(rwGeo, MAT.glass);
-  rwMesh.name = 'RearWindow';
-  g.add(rwMesh);
+  const dividers = [...bPillars, ...extraPillars].sort((a, b) => b - a);
+
+  // Marco metálico: pilares A y C curvados, largueros sobre las ventanas y travesaños del techo,
+  // que tapan el hueco entre el cristal y la chapa
+  const frame = roundedRectSection(0.06, pThick, CONFIG.pillars.round);
+  const railThick = Math.max(pThick, roofGap + metalY + 0.03);
+  const rail = roundedRectSection(0.06, railThick, CONFIG.pillars.round);
+  const railY = (x, z) => (glassTopY(x, z) + getRoofY(x, z) + metalY * 0.5) / 2;
+  const AX = new THREE.Vector3(1, 0, 0), AZ = new THREE.Vector3(0, 0, 1);
 
   for (const s of [-1, 1]){
     const x = s * cw;
-    addPillar(g, `PillarA_${s}`, x, belt + 0.03, cF, getRoofY(x, rF), rF, pThick, MAT.roofPaint);
-    addPillar(g, `PillarC_${s}`, x, getRoofY(x, rR), rR, belt + 0.03, cR, pThick, MAT.roofPaint);
+    sweepSection(g, `PillarA_${s}`, bowedPath(x, belt + 0.03, cF, getRoofY(x, rF), rF, bow), frame, AX, MAT.roofPaint);
+    sweepSection(g, `PillarC_${s}`, bowedPath(x, getRoofY(x, rR), rR, belt + 0.03, cR, bow), frame, AX, MAT.roofPaint);
+
+    const railPath = [];
+    for (let i = 0; i <= 16; i++){
+      const z = rF + (rR - rF) * i / 16;
+      railPath.push(new THREE.Vector3(x, railY(x, z), z));
+    }
+    sweepSection(g, `RoofRail_${s}`, railPath, rail, AX, MAT.roofPaint);
+
+    dividers.forEach((z, k) => {
+      const name = bPillars.includes(z) ? `PillarB_${s}` : `PillarExtra_${k}_${s}`;
+      sweepSection(g, name, [new THREE.Vector3(x, belt + 0.03, z), new THREE.Vector3(x, railY(x, z), z)], frame, AX, MAT.roofPaint);
+    });
+  }
+  for (const [name, z] of [['HeaderFront', rF], ['HeaderRear', rR]]){
+    const path = [];
+    for (let i = 0; i <= 12; i++){
+      const x = -cw + 2 * cw * i / 12;
+      path.push(new THREE.Vector3(x, railY(x, z), z));
+    }
+    sweepSection(g, name, path, rail, AZ, MAT.roofPaint);
   }
 
-  if (P.bPillar){
-    const bZ = cF + (cR - cF) * 0.47;
-    for (const s of [-1, 1]){
-      const x = s * (cw - 0.004);
-      const yF = getRoofY(x, rF) - roofGap - 0.01;
-      const yB = getRoofY(x, bZ) - roofGap - 0.01;
-      const yR = getRoofY(x, rR) - roofGap - 0.01;
-      addQuad(g, `SideWinF_${s}`, [[x, gBottom, cF], [x, gBottom, bZ], [x, yB, bZ], [x, yF, rF]], MAT.glass);
-      addQuad(g, `SideWinR_${s}`, [[x, gBottom, bZ], [x, gBottom, cR], [x, yR, rR], [x, yB, bZ]], MAT.glass);
-      addPillar(g, `PillarB_${s}`, x, belt + 0.03, bZ, getRoofY(x, bZ), bZ, pThick, MAT.roofPaint);
-    }
-  } else {
-    for (const s of [-1, 1]){
-      const x = s * (cw - 0.004);
-      const yF = getRoofY(x, rF) - roofGap - 0.01;
-      const yR = getRoofY(x, rR) - roofGap - 0.01;
-      addQuad(g, `SideWin_${s}`, [[x, gBottom, cF], [x, gBottom, cR], [x, yR, rR], [x, yF, rF]], MAT.glass);
+  // Ventanas laterales: un cristal por hueco entre pilares, con el borde del A y del C curvado
+  const bounds = ['A', ...dividers, 'C'];
+  for (const s of [-1, 1]){
+    const x = s * (cw - 0.004);
+    const frontEdge = bd => bd === 'A'
+      ? bowedPath(x, gBottom, cF, glassTopY(x, rF), rF, bow, 12)
+      : [new THREE.Vector3(x, gBottom, bd), new THREE.Vector3(x, glassTopY(x, bd), bd)];
+    const rearEdge = bd => bd === 'C'
+      ? bowedPath(x, glassTopY(x, rR), rR, gBottom, cR, bow, 12)
+      : [new THREE.Vector3(x, glassTopY(x, bd), bd), new THREE.Vector3(x, gBottom, bd)];
+
+    for (let i = 0; i < bounds.length - 1; i++){
+      const front = frontEdge(bounds[i]);                // de abajo a arriba
+      const rear  = rearEdge(bounds[i + 1]);             // de arriba a abajo
+      const zA = front[front.length - 1].z, zB = rear[0].z;
+      const top = [];
+      for (let k = 1; k < 8; k++){
+        const z = zA + (zB - zA) * k / 8;
+        top.push(new THREE.Vector3(x, glassTopY(x, z), z));
+      }
+      const contour = [...front, ...top, ...rear];
+      const tris = THREE.ShapeUtils.triangulateShape(contour.map(p => new THREE.Vector2(p.z, p.y)), []);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(contour.flatMap(p => [p.x, p.y, p.z]), 3));
+      geo.setIndex(tris.flat());
+      geo.computeVertexNormals();
+      const win = new THREE.Mesh(geo, MAT.glass);
+      win.name = `SideWin_${i}_${s}`;
+      g.add(win);
     }
   }
 
@@ -1990,64 +2187,256 @@ function buildInterior(P){
   return g;
 }
 
+// Opciones de los desplegables de faros, detalles y accesorios: [valor, etiqueta]. El panel y el
+// randomizado leen de aquí, así que un tipo nuevo se añade en la lista y en su constructor
+const OPTIONS = {
+  headlight: [
+    ['block', 'Bloque estándar'], ['matrix', 'Matriz LED'], ['strip', 'Tira continua'],
+    ['round', 'Redondos retro'], ['lens', 'Lente xenón'], ['quad', 'Cuádruple'],
+    ['hyper', 'Hiper deportivo'], ['halo', 'Halo DRL'], ['twin-round', 'Doble redondo clásico'],
+    ['oval', 'Ovalado'], ['square', 'Cuadrado con marco cromado'], ['pixel', 'Píxeles LED'],
+    ['split', 'Dividido (DRL arriba, faro abajo)'], ['eyebrow', 'Ceja LED sobre proyector'],
+    ['l-shape', 'Firma en L'], ['c-shape', 'Firma en C'], ['arrow', 'Flecha / boomerang'],
+    ['triangle', 'Triangular'], ['hex', 'Hexagonal'], ['teardrop', 'Lágrima'],
+    ['projector', 'Proyector con anillo'], ['vertical', 'Vertical apilado'],
+    ['tri-led', 'Tres LED redondos'], ['slim', 'Ultrafino'], ['popup', 'Escamoteable retro'],
+    ['lightbar', 'Barra de luz de lado a lado'],
+  ],
+  drl: [
+    ['none', 'Sin firma LED extra'], ['line', 'Firma: línea superior'], ['under', 'Firma: línea inferior'],
+    ['L', 'Firma: contorno en L'], ['dots', 'Firma: puntos LED'], ['bar', 'Firma: barra uniendo los faros'],
+  ],
+  housing: [['none', 'Sin carcasa'], ['black', 'Carcasa negra'], ['chrome', 'Marco cromado']],
+  grille: [
+    ['slats', 'Lamas verticales'], ['bars-h', 'Barras horizontales'], ['honeycomb', 'Panal (honeycomb)'],
+    ['mesh', 'Malla perforada'], ['solid', 'Panel liso'], ['cross', 'Con barras en cruz'],
+    ['twin', 'Doble rejilla separada'], ['shield', 'Escudo trapezoidal'], ['hex', 'Hexagonal'],
+    ['oval', 'Ovalada clásica'], ['vertical-slots', 'Ranuras verticales anchas'],
+    ['none', 'Sin parrilla (frontal cerrado)'],
+  ],
+  exhaust: [
+    ['none', 'Sin escape visible'], ['single', 'Una salida'], ['dual', 'Doble (una por lado)'],
+    ['quad', 'Cuádruple'], ['center', 'Doble central'], ['twin-side', 'Doble en un lado'],
+    ['rect', 'Salidas rectangulares integradas'], ['side', 'Salida lateral'], ['stacks', 'Chimeneas verticales'],
+  ],
+  handle: [
+    ['chrome', 'Barra cromada'], ['black', 'Barra negra'], ['led', 'Con luz LED'], ['flush', 'Enrasada'],
+    ['pull', 'Tirador con soportes'], ['popout', 'Emergente (tipo eléctrico)'],
+    ['classic', 'Clásica con cerradura'], ['hidden', 'Oculta'],
+  ],
+  mirror: [['standard', 'Estándar'], ['sport', 'Deportivo aerodinámico'], ['camera', 'Cámara compacta'], ['classic', 'Clásico redondo cromado']],
+  frontBumper: [
+    ['integrated', 'Integrado en la carrocería'], ['chrome', 'Lama cromada clásica'], ['american', 'Americano con topes'],
+    ['sport', 'Deportivo con splitter'], ['offroad', 'Acero 4x4 con ganchos y cabrestante'],
+    ['bullbar', 'Defensa tubular'], ['rally', 'Rally con faros auxiliares'],
+  ],
+  rearBumper: [
+    ['integrated', 'Integrado en la carrocería'], ['chrome', 'Lama cromada clásica'], ['american', 'Americano con topes'],
+    ['diffuser', 'Difusor deportivo'], ['offroad', 'Acero 4x4 con bola de remolque'], ['step', 'Peldaño con enganche'],
+  ],
+  spoiler: [['none', 'Sin alerón'], ['lip', 'Labio en el maletero'], ['ducktail', 'Cola de pato'], ['wing', 'Ala GT con soportes'], ['roof', 'Alerón de techo']],
+  roofRack: [['none', 'Sin barras de techo'], ['rails', 'Barras longitudinales'], ['rack', 'Barras con travesaños'], ['basket', 'Cesta portaequipajes']],
+  sideSteps: [['none', 'Sin estribos'], ['tube', 'Estribo de tubo'], ['board', 'Estribo de plataforma']],
+  fogLights: [['none', 'Sin antiniebla'], ['round', 'Antiniebla redondos'], ['strip', 'Antiniebla en tira LED']],
+  antenna: [['none', 'Sin antena'], ['shark', 'Antena aleta de tiburón'], ['rod', 'Antena de varilla']],
+  hoodScoop: [['none', 'Capó liso'], ['scoop', 'Toma de aire central'], ['vents', 'Rejillas laterales'], ['bulge', 'Abombado central']],
+};
+
 function buildHeadlights(parent, P){
-  const zFace = P.surfaceZf + CONFIG.headlight.offsetZ;
-  const yH = P.bottomY + (P.noseTopY - P.bottomY) * 0.80 + CONFIG.headlight.offsetY;
-  const xH = 0.70 * (P.width / 1.92);
-  const type = CONFIG.headlight.type;
-  const rot = [CONFIG.headlight.rotX, CONFIG.headlight.rotY, CONFIG.headlight.rotZ];
+  const H = CONFIG.headlight;
+  const zFace = P.surfaceZf + H.offsetZ;
+  const yH = P.bottomY + (P.noseTopY - P.bottomY) * 0.80 + H.offsetY;
+  const xH = 0.70 * (P.width / 1.92) + H.spacing;
+  const rot = [H.rotX, H.rotY, H.rotZ];
+
+  const depth = 0.20;
+  const zOff = -EMBED_DEPTH + depth / 2;
+  const zLip = zOff + depth / 2 - 0.004;   // aros y contornos finos, justo en la cara exterior
+
+  const disc  = (r, seg = 32) => new THREE.CylinderGeometry(r, r, depth, seg).rotateX(Math.PI / 2);
+  const box   = (w, h, d = depth) => new THREE.BoxGeometry(w, h, d);
+  const ring  = (r, tube, arc = Math.PI * 2, start = 0) => new THREE.TorusGeometry(r, tube, 10, 40, arc).rotateZ(start);
+  const prism = shape => new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }).translate(0, 0, -depth / 2);
+  const poly  = pts => prism(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))));
+
+  // Piezas de un faro derecho (x hacia fuera): [nombre, geometría, x, y, z?, material?]
+  function lampParts(type){
+    const grid = (nx, ny, w, h, dx, dy) => {
+      const out = [];
+      for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++){
+        out.push([`LED_${i}_${j}`, box(w, h), (i - (nx - 1) / 2) * dx, (j - (ny - 1) / 2) * dy]);
+      }
+      return out;
+    };
+    switch (type){
+      case 'round':      return [['RoundA', disc(0.075), -0.10, 0], ['RoundB', disc(0.055), 0.10, 0]];
+      case 'strip':      return [['Strip', box(0.42, 0.025), 0, 0], ['StripDRL', box(0.42, 0.012, depth * 0.7), 0, 0.045]];
+      case 'matrix':     return grid(3, 2, 0.055, 0.035, 0.08, 0.05);
+      case 'lens':       return [['Lens', disc(0.11), 0, 0]];
+      case 'quad':       return [[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([i, j], k) => [`Quad_${k}`, disc(0.045, 20), i * 0.06, j * 0.04]);
+      case 'hyper':      return [['HyperMain', box(0.34, 0.04), 0, 0], ['HyperDRL', box(0.36, 0.012, depth * 0.5), 0, 0.03]];
+      case 'halo':       return [['HaloA', ring(0.055, 0.012), -0.09, 0, zLip], ['HaloB', ring(0.045, 0.010), 0.09, 0, zLip],
+                                 ['HaloCoreA', disc(0.035), -0.09, 0], ['HaloCoreB', disc(0.028), 0.09, 0]];
+      case 'twin-round': return [['TwinA', disc(0.065), -0.08, 0], ['TwinB', disc(0.065), 0.08, 0],
+                                 ['TwinRingA', ring(0.068, 0.009), -0.08, 0, zLip, MAT.chrome], ['TwinRingB', ring(0.068, 0.009), 0.08, 0, zLip, MAT.chrome]];
+      case 'oval':       return [['Oval', disc(0.075).scale(1.8, 1, 1), 0, 0]];
+      case 'square':     return [['SquareLens', box(0.16, 0.13), 0, 0], ['SquareBezel', box(0.19, 0.16, depth * 0.94), 0, 0, zOff - depth * 0.03, MAT.chrome]];
+      case 'pixel':      return grid(6, 3, 0.026, 0.022, 0.036, 0.03);
+      case 'split':      return [['SplitDRL', box(0.32, 0.014), 0, 0.08], ['SplitMainA', disc(0.042), -0.07, -0.03], ['SplitMainB', disc(0.042), 0.07, -0.03]];
+      case 'eyebrow':    return [['BrowLens', disc(0.06), 0, -0.01], ['Brow', ring(0.10, 0.012, Math.PI * 0.7, Math.PI * 0.15), 0, -0.01, zLip]];
+      case 'l-shape':    return [['LSig', poly([[-0.14, 0.06], [0.15, 0.06], [0.15, 0.04], [-0.12, 0.04], [-0.12, -0.07], [-0.14, -0.07]]), 0, 0],
+                                 ['LLens', disc(0.045), 0.03, -0.015]];
+      case 'c-shape':    return [['CSig', ring(0.08, 0.012, Math.PI * 1.5, Math.PI * 0.25), 0, 0, zLip], ['CLens', disc(0.045), 0, 0]];
+      case 'arrow':      return [['Arrow', poly([[-0.16, 0.035], [0.11, 0.035], [0.16, 0], [0.11, -0.035], [-0.16, -0.035], [-0.11, 0]]), 0, 0]];
+      case 'triangle':   return [['Triangle', poly([[-0.15, 0.05], [0.15, 0.05], [0.10, -0.06]]), 0, 0]];
+      case 'hex':        return [['Hex', disc(0.075, 6), 0, 0]];
+      case 'teardrop': {
+        const sh = new THREE.Shape();
+        sh.moveTo(-0.05, 0.06);
+        sh.absarc(-0.05, 0, 0.06, Math.PI / 2, Math.PI * 1.5, false);
+        sh.lineTo(0.15, -0.015);
+        sh.lineTo(0.15, 0.015);
+        sh.lineTo(-0.05, 0.06);
+        return [['Teardrop', prism(sh), 0, 0]];
+      }
+      case 'projector':  return [['ProjLens', disc(0.07), 0, 0], ['ProjRing', ring(0.072, 0.01), 0, 0, zLip, MAT.chrome],
+                                 ['ProjCore', disc(0.028, 24).scale(1, 1, 1.08), 0, 0]];
+      case 'vertical':   return [0.05, 0, -0.05].map((y, k) => [`Vert_${k}`, box(0.07, 0.035), 0, y]);
+      case 'tri-led':    return [-0.09, 0, 0.09].map((x, k) => [`Tri_${k}`, disc(0.032), x, 0]);
+      case 'slim':       return [['Slim', box(0.48, 0.012), 0, 0]];
+      case 'popup':      return [['PopupPod', box(0.26, 0.11, depth * 1.4), 0, 0.03, zOff + depth * 0.2, MAT.paint],
+                                 ['PopupLens', box(0.22, 0.07, depth * 1.4), 0, 0.03, zOff + depth * 0.2 + 0.006]];
+      case 'lightbar':   return [['BarEnd', box(0.20, 0.03), 0, 0]];
+      default:           return [['Block', box(0.24, 0.09), 0, 0], ['BlockDRL', box(0.22, 0.02, depth * 0.6), 0, 0.075]];
+    }
+  }
+
+  // Firma LED añadida a cualquier tipo de faro (la barra entre faros se construye aparte)
+  function drlParts(kind){
+    switch (kind){
+      case 'line':  return [['DRLLine', box(0.30, 0.010, depth * 0.8), 0, 0.085]];
+      case 'under': return [['DRLUnder', box(0.30, 0.010, depth * 0.8), 0, -0.075]];
+      case 'L':     return [['DRLTop', box(0.30, 0.010, depth * 0.8), 0, 0.085], ['DRLSide', box(0.010, 0.15, depth * 0.8), -0.15, 0.015]];
+      case 'dots':  return [-0.09, -0.03, 0.03, 0.09].map((x, k) => [`DRLDot_${k}`, disc(0.012, 12), x, -0.075]);
+      default:      return [];
+    }
+  }
 
   for (const s of [-1, 1]){
     const grp = new THREE.Group();
     grp.position.set(s * xH, yH, zFace);
     grp.rotation.set(rot[0], rot[1], rot[2]);
+    grp.scale.set(s * H.size * H.width, H.size, 1);   // escala negativa en x: el faro izquierdo en espejo
     parent.add(grp);
 
-    const add = (name, geo, x, y, z) => {
-      const m = new THREE.Mesh(geo, MAT.headlight);
-      m.position.set(x * s, y, z);
-      m.name = name;
+    for (const [name, geo, x, y, z = zOff, mat = MAT.headlight] of [...lampParts(H.type), ...drlParts(H.drl)]){
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.name = `Head${name}`;
       grp.add(m);
-      return m;
-    };
-
-    const depth = 0.20;
-    const zOff = -EMBED_DEPTH + depth / 2;
-
-    switch (type){
-      case 'round':
-        add('HeadRoundA', new THREE.CylinderGeometry(0.075, 0.075, depth, 24), -0.10, 0, zOff).rotation.x = Math.PI/2;
-        add('HeadRoundB', new THREE.CylinderGeometry(0.055, 0.055, depth, 24),  0.10, 0, zOff).rotation.x = Math.PI/2;
-        break;
-      case 'strip':
-        add('Strip', new THREE.BoxGeometry(0.42, 0.025, depth), 0, 0, zOff);
-        add('DRL',   new THREE.BoxGeometry(0.42, 0.012, depth * 0.7), 0, 0.045, zOff);
-        break;
-      case 'matrix':
-        for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++){
-          add(`LED_${i}_${j}`, new THREE.BoxGeometry(0.055, 0.035, depth), -0.08 + i*0.08, -0.025 + j*0.05, zOff);
-        }
-        break;
-      case 'lens':
-        add('Lens', new THREE.CylinderGeometry(0.11, 0.11, depth, 32), 0, 0, zOff).rotation.x = Math.PI/2;
-        break;
-      case 'quad':
-        for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++){
-          add(`Quad_${i}_${j}`, new THREE.CylinderGeometry(0.045, 0.045, depth, 20), (i-0.5)*0.12, (j-0.5)*0.08, zOff).rotation.x = Math.PI/2;
-        }
-        break;
-      case 'hyper':
-        add('HyperMain', new THREE.BoxGeometry(0.34, 0.04, depth), 0, 0, zOff);
-        add('HyperDRL',  new THREE.BoxGeometry(0.36, 0.012, depth * 0.5), 0, 0.03, zOff);
-        break;
-      case 'halo':
-        add('Halo1', new THREE.TorusGeometry(0.055, 0.012, 16, 32), -0.09, 0, zOff);
-        add('Halo2', new THREE.TorusGeometry(0.045, 0.010, 16, 32),  0.09, 0, zOff);
-        break;
-      default:
-        add('Block', new THREE.BoxGeometry(0.24, 0.09, depth), 0, 0, zOff);
-        add('DRL',   new THREE.BoxGeometry(0.22, 0.02, depth * 0.6), 0, 0.075, zOff);
     }
+
+    // Carcasa ajustada al conjunto de piezas, un poco por detrás para que las luces sobresalgan
+    if (H.housing !== 'none'){
+      const bb = new THREE.Box3();
+      for (const m of grp.children){
+        m.updateMatrix();
+        m.geometry.computeBoundingBox();
+        bb.union(m.geometry.boundingBox.clone().applyMatrix4(m.matrix));
+      }
+      const size = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
+      const housing = new THREE.Mesh(box(size.x + 0.04, size.y + 0.04, depth * 0.9), H.housing === 'chrome' ? MAT.chrome : MAT.grilleBase);
+      housing.position.set(c.x, c.y, zOff - depth * 0.05 - 0.004);
+      housing.name = 'HeadHousing';
+      grp.add(housing);
+    }
+  }
+
+  if (H.type === 'lightbar' || H.drl === 'bar'){
+    const bar = new THREE.Mesh(box(2 * xH, 0.014 * H.size, depth * 0.8), MAT.headlight);
+    bar.position.set(0, yH + (H.type === 'lightbar' ? 0 : 0.06 * H.size), zFace + zOff);
+    bar.name = 'HeadLightBar';
+    parent.add(bar);
+  }
+}
+
+// Parrilla delantera centrada en (0, y) sobre la cara z
+function buildGrille(g, type, gW, gH, y, zFace, prot){
+  const framed = (name, w, h, x = 0) => {
+    embedBox(g, `${name}Base`, [w, h, 0],           [x, y, zFace],                [0,0,1], prot, MAT.grilleBase);
+    embedBox(g, `${name}Top`,  [w + 0.06, 0.02, 0], [x, y + h / 2, zFace],        [0,0,1], prot, MAT.chrome);
+    embedBox(g, `${name}Bot`,  [w + 0.06, 0.02, 0], [x, y - h / 2, zFace],        [0,0,1], prot, MAT.chrome);
+    embedBox(g, `${name}L`,    [0.025, h, 0],       [x - w / 2 - 0.03, y, zFace], [0,0,1], prot, MAT.chrome);
+    embedBox(g, `${name}R`,    [0.025, h, 0],       [x + w / 2 + 0.03, y, zFace], [0,0,1], prot, MAT.chrome);
+  };
+  // Contorno libre: fondo oscuro extruido y marco cromado con el mismo contorno
+  const shaped = (name, outline) => {
+    const depth = EMBED_DEPTH + prot;
+    const toShape = k => new THREE.Shape(outline.map(([px, py]) => new THREE.Vector2(px * k, py * k)));
+    const ringShape = toShape(1);
+    ringShape.holes.push(toShape(0.92));
+    const parts = [
+      [new THREE.ExtrudeGeometry(toShape(0.92), { depth, bevelEnabled: false }), MAT.grilleBase, 'Base', 0],
+      [new THREE.ExtrudeGeometry(ringShape, { depth: depth + 0.004, bevelEnabled: false }), MAT.chrome, 'Frame', 0.004],
+    ];
+    for (const [geo, mat, suffix, extra] of parts){
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(0, y, zFace + prot + extra - (depth + extra));
+      addMesh(g, `${name}${suffix}`, m);
+    }
+  };
+
+  switch (type){
+    case 'none': return;
+    case 'twin':
+      framed('GrilleL', gW * 0.44, gH, -gW * 0.27);
+      framed('GrilleR', gW * 0.44, gH,  gW * 0.27);
+      return;
+    case 'shield':
+      shaped('GrilleShield', [[-gW / 2, gH / 2], [gW / 2, gH / 2], [gW * 0.3, -gH / 2], [-gW * 0.3, -gH / 2]]);
+      return;
+    case 'hex':
+      shaped('GrilleHex', [[-gW / 2, 0], [-gW * 0.38, gH / 2], [gW * 0.38, gH / 2], [gW / 2, 0], [gW * 0.38, -gH / 2], [-gW * 0.38, -gH / 2]]);
+      return;
+    case 'oval': {
+      const outline = [];
+      for (let i = 0; i < 40; i++){
+        const a = i / 40 * Math.PI * 2;
+        outline.push([Math.cos(a) * gW / 2, Math.sin(a) * gH / 2]);
+      }
+      shaped('GrilleOval', outline);
+      for (let k = -2; k <= 2; k++){
+        const dy = k * gH * 0.16;
+        const w = gW * 0.9 * Math.sqrt(Math.max(0, 1 - (2 * dy / gH) ** 2));
+        embedBox(g, `GrilleOvalBar_${k + 2}`, [w, 0.014, 0], [0, y + dy, zFace], [0,0,1], prot + 0.002, MAT.chrome);
+      }
+      return;
+    }
+    case 'vertical-slots': {
+      const n = 6;
+      for (let i = 0; i < n; i++){
+        embedBox(g, `GrilleSlot_${i}`, [gW / n * 0.5, gH * 0.9, 0], [(i - (n - 1) / 2) * gW / n, y, zFace], [0,0,1], prot, MAT.grilleBase);
+      }
+      return;
+    }
+  }
+
+  framed('Grille', gW, gH);
+  if (type === 'slats' || type === 'bars-h'){
+    const vertical = (type !== 'bars-h');
+    const nSlats = vertical ? 13 : 7;
+    for (let i = 0; i < nSlats; i++){
+      const t = (i / (nSlats - 1)) - 0.5;
+      const px = vertical ? t * gW * 0.92 : 0;
+      const py = vertical ? y : y + t * gH * 0.92;
+      const sz = vertical ? [0.018, gH * 0.92, 0] : [gW * 0.92, 0.018, 0];
+      embedBox(g, `GrilleSlat_${i}`, sz, [px, py, zFace], [0,0,1], prot, MAT.chrome);
+    }
+  } else if (type === 'honeycomb' || type === 'mesh'){
+    embedBox(g, 'GrilleInnerBorder', [gW - 0.02, 0.015, 0], [0, y + gH / 2 - 0.02, zFace], [0,0,1], prot, MAT.chrome);
+  } else if (type === 'cross'){
+    embedBox(g, 'GrilleCrossH', [gW * 0.96, 0.022, 0], [0, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
+    embedBox(g, 'GrilleCrossV', [0.022, gH * 0.96, 0], [0, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
   }
 }
 
@@ -2058,32 +2447,12 @@ function buildFrontDetails(P){
   const ws = P.width / 1.92;
   const zFace = P.surfaceZf;
   const fH = CONFIG.zones.frontBumper.height;
-  const grilleY = b + (P.noseTopY - b) * 0.50 * fH;
+  const G = CONFIG.embeds.grille;
+  const grilleY = b + (P.noseTopY - b) * 0.50 * fH + G.offsetY;
   const lowerY  = b + (P.noseTopY - b) * 0.22 * fH;
-  const gW = 1.05 * ws, gH = 0.26;
-  const protG = CONFIG.embeds.grille.protrudeZ;
   const protI = CONFIG.embeds.intake.protrudeZ;
-  const gType = CONFIG.embeds.grille.type;
 
-  embedBox(g, 'GrilleBase',     [gW, gH, 0],        [0, grilleY, zFace],           [0,0,1], protG, MAT.grilleBase);
-  embedBox(g, 'GrilleFrameTop', [gW + 0.06, 0.02, 0], [0, grilleY + gH/2, zFace],  [0,0,1], protG, MAT.chrome);
-  embedBox(g, 'GrilleFrameBot', [gW + 0.06, 0.02, 0], [0, grilleY - gH/2, zFace],  [0,0,1], protG, MAT.chrome);
-  embedBox(g, 'GrilleFrameL',   [0.025, gH, 0],     [-gW/2 - 0.03, grilleY, zFace],[0,0,1], protG, MAT.chrome);
-  embedBox(g, 'GrilleFrameR',   [0.025, gH, 0],     [ gW/2 + 0.03, grilleY, zFace],[0,0,1], protG, MAT.chrome);
-
-  if (gType === 'slats' || gType === 'bars-h'){
-    const vertical = (gType !== 'bars-h');
-    const nSlats = gType === 'bars-h' ? 7 : 13;
-    for (let i = 0; i < nSlats; i++){
-      const t = (i / (nSlats - 1)) - 0.5;
-      const px = vertical ? t * gW * 0.92 : 0;
-      const py = vertical ? grilleY : grilleY + t * gH * 0.92;
-      const sz = vertical ? [0.018, gH * 0.92, 0] : [gW * 0.92, 0.018, 0];
-      embedBox(g, `GrilleSlat_${i}`, sz, [px, py, zFace], [0,0,1], protG, MAT.chrome);
-    }
-  } else if (gType === 'honeycomb' || gType === 'mesh'){
-    embedBox(g, 'GrilleInnerBorder', [gW - 0.02, 0.015, 0], [0, grilleY + gH/2 - 0.02, zFace], [0,0,1], protG, MAT.chrome);
-  }
+  buildGrille(g, G.type, 1.05 * ws * G.width, 0.26 * G.height, grilleY, zFace, G.protrudeZ);
 
   embedBox(g, 'LowerGrille',      [0.90 * ws, 0.12, 0], [0, lowerY, zFace],        [0,0,1], protI, MAT.grilleBase);
   embedBox(g, 'LowerGrilleFrame', [0.92 * ws, 0.02, 0], [0, lowerY + 0.06, zFace], [0,0,1], protI, MAT.chrome);
@@ -2093,7 +2462,7 @@ function buildFrontDetails(P){
   }
 
   buildHeadlights(g, P);
-  embedCylinder(g, 'Star', 0.04, [0, b + (P.noseTopY - b) * 0.88, zFace], [0,0,1], 0.005, MAT.chrome);
+  if (G.emblem) embedCylinder(g, 'Star', 0.04, [0, b + (P.noseTopY - b) * 0.88, zFace], [0,0,1], 0.005, MAT.chrome);
   return g;
 }
 
@@ -2162,19 +2531,113 @@ function buildRearDetails(P){
   }
 
   // Escapes
-  const exhaustY = b + (P.rearBeltY - b) * 0.16;
-  if (eType === 'dual'){
-    for (const s of [-1, 1]){
-      embedCylinder(g, `Exhaust_${s}`, 0.05, [s * 0.45 * ws, exhaustY, zFaceExhaust], [0,0,-1], protE, MAT.chrome);
-    }
-  } else if (eType === 'quad'){
-    for (const s of [-1, 1]){
-      embedCylinder(g, `Exhaust_${s}_a`, 0.04, [s * 0.42 * ws, exhaustY, zFaceExhaust], [0,0,-1], protE, MAT.chrome);
-      embedCylinder(g, `Exhaust_${s}_b`, 0.04, [s * 0.56 * ws, exhaustY, zFaceExhaust], [0,0,-1], protE, MAT.chrome);
-    }
+  const E = CONFIG.embeds.exhaust;
+  const exhaustY = b + (P.rearBeltY - b) * 0.16 + E.offsetY;
+  const er = 0.05 * E.size, sp = E.spacing;
+  const pipe = (name, x, r) => embedCylinder(g, name, r, [x, exhaustY, zFaceExhaust], [0,0,-1], protE, MAT.chrome);
+  switch (eType){
+    case 'single':
+      pipe('Exhaust', -(0.45 * ws + sp), er);
+      break;
+    case 'dual':
+      for (const s of [-1, 1]) pipe(`Exhaust_${s}`, s * (0.45 * ws + sp), er);
+      break;
+    case 'quad':
+      for (const s of [-1, 1]){
+        pipe(`Exhaust_${s}_a`, s * (0.42 * ws + sp), er * 0.8);
+        pipe(`Exhaust_${s}_b`, s * (0.56 * ws + sp), er * 0.8);
+      }
+      break;
+    case 'center':
+      for (const s of [-1, 1]) pipe(`Exhaust_${s}`, s * (0.07 + sp), er * 0.9);
+      break;
+    case 'twin-side':
+      pipe('Exhaust_a', -(0.40 * ws + sp), er * 0.85);
+      pipe('Exhaust_b', -(0.54 * ws + sp), er * 0.85);
+      break;
+    case 'rect':
+      for (const s of [-1, 1]){
+        const pos = [s * (0.45 * ws + sp), exhaustY, zFaceExhaust];
+        embedBox(g, `ExhaustRect_${s}`,     [0.20 * E.size, 0.07 * E.size, 0],   pos, [0,0,-1], protE, MAT.chrome);
+        embedBox(g, `ExhaustRectHole_${s}`, [0.17 * E.size, 0.045 * E.size, 0], pos, [0,0,-1], protE + 0.003, MAT.grilleBase);
+      }
+      break;
+    case 'side':
+      // Salida lateral justo delante de la rueda trasera
+      for (const s of [-1, 1]){
+        const z = P.rearAxleZ + P.wheelR * 1.35 + 0.08 - sp;
+        embedCylinder(g, `ExhaustSide_${s}`, er * 0.8, [s * P.surfaceX, b + 0.05 + E.offsetY, z], [s,0,0], protE + 0.02, MAT.chrome);
+      }
+      break;
+    case 'stacks':
+      // Chimeneas verticales detrás del habitáculo
+      for (const s of [-1, 1]){
+        const y0 = P.rearBeltY, y1 = P.roofY + 0.15 + E.offsetY;
+        addCyl(g, `ExhaustStack_${s}`, er * 0.9, y1 - y0, [s * (P.cabinW - 0.06 - sp), (y0 + y1) / 2, P.cabinRearZ - 0.14], MAT.chrome);
+      }
+      break;
   }
 
   return g;
+}
+
+function buildMirror(g, s, type, xSide, y, z, prot){
+  switch (type){
+    case 'sport': {
+      embedBox(g, `MirrorArm_${s}`, [0, 0.02, 0.05], [s * xSide, y, z], [s,0,0], prot * 0.6, MAT.carbon);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.055, 18, 12), MAT.paint);
+      head.position.set(s * (xSide + prot * 0.6 + 0.07), y + 0.01, z - 0.01);
+      head.scale.set(1.5, 0.8, 0.6);
+      addMesh(g, `Mirror_${s}`, head);
+      break;
+    }
+    case 'camera':
+      embedBox(g, `MirrorArm_${s}`, [0, 0.025, 0.03], [s * xSide, y, z], [s,0,0], prot * 0.9, MAT.carbon);
+      addBox(g, `MirrorCamera_${s}`, [0.10, 0.035, 0.05], [s * (xSide + prot * 0.9 + 0.04), y, z], MAT.carbon);
+      break;
+    case 'classic': {
+      addTubeBetween(g, `MirrorStalk_${s}`, new THREE.Vector3(s * xSide, y - 0.02, z), new THREE.Vector3(s * (xSide + prot + 0.05), y + 0.06, z), 0.008, MAT.chrome);
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.025, 24).rotateX(Math.PI / 2), MAT.chrome);
+      head.position.set(s * (xSide + prot + 0.07), y + 0.08, z);
+      addMesh(g, `Mirror_${s}`, head);
+      break;
+    }
+    default: {
+      embedBox(g, `MirrorArm_${s}`, [0, 0.04, 0.03], [s * xSide, y, z], [s,0,0], prot * 0.7, MAT.paint);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), MAT.paint);
+      head.position.set(s * (xSide + prot * 0.7 + 0.06), y, z);
+      head.scale.set(1.3, 1.0, 0.7);
+      addMesh(g, `Mirror_${s}`, head);
+    }
+  }
+}
+
+function buildHandle(g, name, s, type, xSide, y, z, prot){
+  switch (type){
+    case 'hidden':
+      return;
+    case 'flush':
+      embedBox(g, name, [0, 0.02, 0.16], [s * xSide, y, z], [s,0,0], 0.002, MAT.chrome);
+      return;
+    case 'pull':
+      addBox(g, `${name}Bar`, [0.016, 0.022, 0.20], [s * (xSide + 0.035), y, z], MAT.chrome);
+      for (const dz of [-0.085, 0.085]){
+        addBox(g, `${name}Post${dz > 0 ? 'F' : 'R'}`, [0.04, 0.016, 0.02], [s * (xSide + 0.015), y, z + dz], MAT.chrome);
+      }
+      return;
+    case 'popout':
+      embedBox(g, `${name}Recess`, [0, 0.035, 0.17], [s * xSide, y, z], [s,0,0], 0.002, MAT.carbon);
+      addBox(g, `${name}Paddle`, [0.012, 0.02, 0.12], [s * (xSide + 0.008), y, z], MAT.chrome);
+      return;
+    case 'classic':
+      embedBox(g, name, [0, 0.028, 0.14], [s * xSide, y, z], [s,0,0], prot, MAT.chrome);
+      embedCylinder(g, `${name}Lock`, 0.012, [s * xSide, y, z + 0.10], [s,0,0], prot * 0.6, MAT.chrome);
+      return;
+    default: {
+      const mat = type === 'black' ? MAT.carbon : type === 'led' ? MAT.headlight : MAT.chrome;
+      embedBox(g, name, [0, 0.03, 0.18], [s * xSide, y, z], [s,0,0], prot, mat);
+    }
+  }
 }
 
 function buildSideDetails(P){
@@ -2184,30 +2647,262 @@ function buildSideDetails(P){
   const belt = P.beltY;
   const cF = P.cabinFrontZ, cR = P.cabinRearZ;
   const xSide = P.halfW + 0.005;
-  const protHa = CONFIG.embeds.handle.protrudeX;
-  const protM  = CONFIG.embeds.mirror.protrudeX;
-  const hType  = CONFIG.embeds.handle.type;
+  const Hd = CONFIG.embeds.handle;
+  const M  = CONFIG.embeds.mirror;
+  const hY = belt - 0.12 + Hd.offsetY;
 
   for (const s of [-1, 1]){
-    const mirY = belt + 0.04;
-    const mirZ = cF - 0.20;
-    embedBox(g, `MirrorArm_${s}`, [0, 0.04, 0.03], [s * xSide, mirY, mirZ], [s,0,0], protM * 0.7, MAT.paint);
-    const mir = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), MAT.paint);
-    mir.position.set(s * (xSide + protM * 0.7 + 0.06), mirY, mirZ);
-    mir.scale.set(1.3, 1.0, 0.7);
-    mir.castShadow = mir.receiveShadow = true;
-    g.add(mir);
-
-    const hMat = hType === 'black' ? MAT.carbon
-               : hType === 'led'   ? MAT.headlight
-               : MAT.chrome;
-    const hSize = hType === 'flush' ? [0, 0.02, 0.16] : [0, 0.03, 0.18];
-    const hPro  = hType === 'flush' ? 0.002 : protHa;
-
-    embedBox(g, `HandleF_${s}`, hSize, [s * xSide, belt - 0.12, cF - 0.65], [s,0,0], hPro, hMat);
-    embedBox(g, `HandleR_${s}`, hSize, [s * xSide, belt - 0.12, cR + 0.85], [s,0,0], hPro, hMat);
+    buildMirror(g, s, M.type, xSide, belt + 0.04, cF - 0.20, M.protrudeX);
+    buildHandle(g, `HandleF_${s}`, s, Hd.type, xSide, hY, cF - 0.65 + Hd.offsetZ, Hd.protrudeX);
+    buildHandle(g, `HandleR_${s}`, s, Hd.type, xSide, hY, cR + 0.85 + Hd.offsetZ, Hd.protrudeX);
   }
 
+  return g;
+}
+
+// Paragolpes postizo. z0 es la cara del coche, dir = +1 delante y -1 detrás (hacia fuera);
+// yb es la altura de la barra e yLow la de las piezas a ras de suelo (splitter, difusor)
+function buildBumper(g, tag, type, W, yb, yLow, z0, dir, P){
+  const out = d => z0 + dir * d;
+  const V = (x, y, d) => new THREE.Vector3(x, y, out(d));
+  switch (type){
+    case 'chrome':
+      addBox(g, `${tag}BumperBlade`,  [W * 0.98, 0.07, 0.08],   [0, yb, out(0.03)], MAT.chrome);
+      addBox(g, `${tag}BumperRubber`, [W * 0.90, 0.016, 0.084], [0, yb, out(0.03)], MAT.rubber);
+      for (const s of [-1, 1]) addBox(g, `${tag}BumperGuard_${s}`, [0.06, 0.13, 0.06], [s * W * 0.27, yb + 0.01, out(0.08)], MAT.chrome);
+      break;
+    case 'american':
+      addBox(g, `${tag}BumperBar`,    [W * 1.03, 0.14, 0.14],   [0, yb, out(0.05)], MAT.chrome);
+      addBox(g, `${tag}BumperRubber`, [W * 0.96, 0.025, 0.145], [0, yb, out(0.05)], MAT.rubber);
+      for (const s of [-1, 1]){
+        addBox(g, `${tag}BumperGuard_${s}`,    [0.08, 0.26, 0.09],   [s * W * 0.30, yb + 0.03, out(0.11)], MAT.chrome);
+        addBox(g, `${tag}BumperGuardTip_${s}`, [0.085, 0.05, 0.095], [s * W * 0.30, yb + 0.14, out(0.11)], MAT.rubber);
+      }
+      break;
+    case 'sport':
+      addBox(g, `${tag}Splitter`, [W * 0.96, 0.018, 0.16], [0, yLow, out(0.05)], MAT.carbon);
+      for (const s of [-1, 1]) addBox(g, `${tag}Canard_${s}`, [0.16, 0.012, 0.10], [s * W * 0.44, yb + 0.07, out(0.03)], MAT.carbon, [0, 0, s * 0.3]);
+      for (const k of [-1, 0, 1]) addBox(g, `${tag}SplitterFin_${k + 1}`, [0.012, 0.05, 0.14], [k * W * 0.25, yLow + 0.03, out(0.05)], MAT.carbon);
+      break;
+    case 'diffuser':
+      addBox(g, `${tag}Diffuser`, [W * 0.80, 0.02, 0.30], [0, yLow, out(-0.08)], MAT.carbon, [-dir * 0.15, 0, 0]);
+      for (let k = -2; k <= 2; k++) addBox(g, `${tag}DiffuserFin_${k + 2}`, [0.012, 0.08, 0.28], [k * W * 0.15, yLow + 0.04, out(-0.08)], MAT.carbon);
+      break;
+    case 'offroad':
+      addBox(g, `${tag}SteelBumper`, [W, 0.17, 0.18], [0, yb, out(0.07)], MAT.steel);
+      addBox(g, `${tag}SkidPlate`, [W * 0.6, 0.015, 0.36], [0, P.bottomY - 0.01, out(0.0)], MAT.alu, [-dir * 0.35, 0, 0]);
+      for (const s of [-1, 1]){
+        const hook = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.011, 8, 16, Math.PI), MAT.caliper);
+        hook.position.copy(V(s * W * 0.32, yb - 0.03, 0.165));
+        addMesh(g, `${tag}TowHook_${s}`, hook);
+      }
+      if (dir > 0) addBox(g, `${tag}Winch`, [0.36, 0.11, 0.12], [0, yb + 0.13, out(0.05)], MAT.steel);
+      else addTowBall(g, tag, yb - 0.05, out, 0.16);
+      break;
+    case 'bullbar': {
+      const yTop = Math.max(yb + 0.28, P.noseTopY + 0.08);
+      const r = 0.03;
+      for (const s of [-1, 1]){
+        addTubeBetween(g, `${tag}BullbarPost_${s}`, V(s * W * 0.22, yb - 0.08, 0.12), V(s * W * 0.22, yTop, 0.17), r, MAT.steel);
+        addTubeBetween(g, `${tag}BullbarWing_${s}`, V(s * W * 0.22, yb - 0.02, 0.13), V(s * W * 0.44, yb - 0.02, 0.03), r * 0.8, MAT.steel);
+        const joint = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), MAT.steel);
+        joint.position.copy(V(s * W * 0.22, yTop, 0.17));
+        addMesh(g, `${tag}BullbarJoint_${s}`, joint);
+      }
+      addTubeBetween(g, `${tag}BullbarTop`, V(-W * 0.22, yTop, 0.17), V(W * 0.22, yTop, 0.17), r, MAT.steel);
+      addTubeBetween(g, `${tag}BullbarMid`, V(-W * 0.22, yb + 0.10, 0.145), V(W * 0.22, yb + 0.10, 0.145), r * 0.8, MAT.steel);
+      break;
+    }
+    case 'rally': {
+      addBox(g, `${tag}SkidPlate`, [W * 0.7, 0.015, 0.30], [0, P.bottomY - 0.005, out(0.0)], MAT.alu, [-dir * 0.3, 0, 0]);
+      const yL = P.noseTopY + 0.06;
+      addTubeBetween(g, `${tag}LampBar`, V(-W * 0.36, yL - 0.09, 0.10), V(W * 0.36, yL - 0.09, 0.10), 0.018, MAT.steel);
+      for (const s of [-1, 1]){
+        const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.08, 28).rotateX(Math.PI / 2), MAT.steel);
+        shell.position.copy(V(s * W * 0.22, yL, 0.14));
+        addMesh(g, `${tag}RallyLamp_${s}`, shell);
+        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.01, 28).rotateX(Math.PI / 2), MAT.headlight);
+        lens.position.copy(V(s * W * 0.22, yL, 0.18));
+        addMesh(g, `${tag}RallyLens_${s}`, lens);
+        addTubeBetween(g, `${tag}RallyMount_${s}`, V(s * W * 0.22, yL - 0.09, 0.10), V(s * W * 0.22, yL - 0.05, 0.12), 0.012, MAT.steel);
+      }
+      break;
+    }
+    case 'step':
+      addBox(g, `${tag}StepBar`, [W * 0.98, 0.10, 0.12], [0, yb, out(0.05)], MAT.chrome);
+      addBox(g, `${tag}StepPad`, [W * 0.40, 0.012, 0.13], [0, yb + 0.056, out(0.05)], MAT.rubber);
+      addTowBall(g, tag, yb - 0.06, out, 0.12);
+      break;
+  }
+}
+
+function addTowBall(g, tag, y, out, reach){
+  addBox(g, `${tag}Hitch`, [0.07, 0.07, reach + 0.10], [0, y, out(reach / 2)], MAT.steel);
+  addCyl(g, `${tag}HitchNeck`, 0.012, 0.05, [0, y + 0.06, out(reach + 0.03)], MAT.chrome);
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), MAT.chrome);
+  ball.position.set(0, y + 0.095, out(reach + 0.03));
+  addMesh(g, `${tag}HitchBall`, ball);
+}
+
+function buildSpoiler(g, P, S){
+  if (S.type === 'none') return;
+  const W = P.width * S.width;
+  const y = P.tailTopY + S.offsetY;
+  const z = P.trunkRearZ + S.offsetZ;
+  switch (S.type){
+    case 'lip':
+      addBox(g, 'SpoilerLip', [W * 0.85, 0.03, 0.12], [0, y + 0.02, z + 0.04], MAT.paint, [0.25, 0, 0]);
+      break;
+    case 'ducktail':
+      addBox(g, 'SpoilerDucktail', [W * 0.80, 0.07, 0.25], [0, y + 0.04, z + 0.06], MAT.paint, [0.35, 0, 0]);
+      break;
+    case 'wing': {
+      const yw = y + 0.30;
+      addBox(g, 'SpoilerWing', [W * 0.92, 0.025, 0.28], [0, yw, z + 0.10], MAT.carbon, [0.08, 0, 0]);
+      for (const s of [-1, 1]){
+        addBox(g, `SpoilerUpright_${s}`,  [0.03, yw - y, 0.10], [s * W * 0.30, (y + yw) / 2, z + 0.12], MAT.carbon);
+        addBox(g, `SpoilerEndplate_${s}`, [0.012, 0.12, 0.30], [s * W * 0.46, yw + 0.02, z + 0.10], MAT.carbon);
+      }
+      break;
+    }
+    case 'roof': {
+      const yr = roofSurfaceY(P, 0, P.roofRearZ) + CONFIG.glass.roofMetalY + 0.01 + S.offsetY;
+      addBox(g, 'SpoilerRoof', [P.cabinW * 2 * S.width, 0.03, 0.24], [0, yr, P.roofRearZ - 0.06 + S.offsetZ], MAT.roofPaint, [0.12, 0, 0]);
+      break;
+    }
+  }
+}
+
+function buildRoofRack(g, P, type){
+  if (type === 'none') return;
+  const xr = P.cabinW * 0.78;
+  const lift = CONFIG.glass.roofMetalY + 0.05;
+  const z0 = P.roofFrontZ - 0.08, z1 = P.roofRearZ + 0.08;
+  const at = (x, z) => new THREE.Vector3(x, roofSurfaceY(P, x, z) + lift, z);
+  const tube = roundedRectSection(0.035, 0.03, 1);
+  for (const s of [-1, 1]){
+    const path = [];
+    for (let i = 0; i <= 12; i++) path.push(at(s * xr, z0 + (z1 - z0) * i / 12));
+    sweepSection(g, `RackRail_${s}`, path, tube, new THREE.Vector3(1, 0, 0), MAT.steel);
+    for (const [k, z] of [[0, z0 - 0.03], [1, z1 + 0.03]]){
+      const p = at(s * xr, z);
+      addBox(g, `RackFoot_${k}_${s}`, [0.04, lift, 0.06], [p.x, p.y - lift / 2, z], MAT.steel);
+    }
+  }
+  if (type === 'rails') return;
+  const crossZ = [z0 - 0.25, z1 + 0.25];
+  crossZ.forEach((z, k) => addBox(g, `RackCrossbar_${k}`, [2 * xr + 0.08, 0.025, 0.05], [0, at(0, z).y + 0.01, z], MAT.steel));
+  if (type === 'basket'){
+    const yB = Math.max(...crossZ.map(z => at(0, z).y)) + 0.04;
+    const zA = crossZ[0] + 0.05, zB = crossZ[1] - 0.05, xb = xr - 0.05;
+    addBox(g, 'RackBasketFloor', [2 * xb, 0.01, zA - zB], [0, yB, (zA + zB) / 2], MAT.grilleBase);
+    const c = [[-xb, zA], [xb, zA], [xb, zB], [-xb, zB]];
+    c.forEach(([x, z], k) => {
+      const [nx, nz] = c[(k + 1) % 4];
+      addTubeBetween(g, `RackBasketRim_${k}`, new THREE.Vector3(x, yB + 0.09, z), new THREE.Vector3(nx, yB + 0.09, nz), 0.012, MAT.steel);
+      addTubeBetween(g, `RackBasketPost_${k}`, new THREE.Vector3(x, yB, z), new THREE.Vector3(x, yB + 0.09, z), 0.01, MAT.steel);
+    });
+  }
+}
+
+function buildSideSteps(g, P, type){
+  if (type === 'none') return;
+  // Entre los pasos de rueda
+  const za = P.frontAxleZ - P.wheelR * 1.35, zb = P.rearAxleZ + P.wheelR * 1.35;
+  if (za - zb < 0.4) return;
+  const y = P.bottomY + 0.01;
+  for (const s of [-1, 1]){
+    if (type === 'tube'){
+      const x = s * (P.halfW + 0.07);
+      sweepSection(g, `SideStepTube_${s}`, [new THREE.Vector3(x, y, za), new THREE.Vector3(x, y, zb)],
+                   roundedRectSection(0.07, 0.07, 1), new THREE.Vector3(1, 0, 0), MAT.chrome);
+      for (const [k, z] of [[0, za - 0.15], [1, zb + 0.15]]) addBox(g, `SideStepBracket_${k}_${s}`, [0.10, 0.03, 0.05], [s * (P.halfW + 0.02), y, z], MAT.steel);
+    } else {
+      addBox(g, `SideStepBoard_${s}`, [0.20, 0.03, za - zb], [s * (P.halfW + 0.08), y, (za + zb) / 2], MAT.rubber);
+      addBox(g, `SideStepEdge_${s}`, [0.02, 0.035, za - zb], [s * (P.halfW + 0.18), y, (za + zb) / 2], MAT.alu);
+    }
+  }
+}
+
+function buildFogLights(g, P, type){
+  if (type === 'none') return;
+  const b = P.bottomY, ws = P.width / 1.92;
+  const y = b + (P.noseTopY - b) * 0.22 * CONFIG.zones.frontBumper.height;
+  for (const s of [-1, 1]){
+    const pos = [s * 0.62 * ws, y, P.surfaceZf];
+    if (type === 'round'){
+      embedCylinder(g, `FogLight_${s}`, 0.04, pos, [0,0,1], 0.012, MAT.headlight);
+      embedCylinder(g, `FogBezel_${s}`, 0.05, pos, [0,0,1], 0.006, MAT.chrome);
+    } else {
+      embedBox(g, `FogStrip_${s}`, [0.16, 0.018, 0], pos, [0,0,1], 0.01, MAT.headlight);
+    }
+  }
+}
+
+function buildAntenna(g, P, type){
+  if (type === 'shark'){
+    // Perfil de aleta: bajo delante y alto detrás; se extruye a lo ancho (eje X)
+    const fin = new THREE.Shape();
+    fin.moveTo(0, 0);
+    fin.lineTo(0.16, 0);
+    fin.quadraticCurveTo(0.05, 0.02, 0.01, 0.065);
+    fin.lineTo(0, 0);
+    const geo = new THREE.ExtrudeGeometry(fin, { depth: 0.04, bevelEnabled: true, bevelSize: 0.006, bevelThickness: 0.006, bevelSegments: 3 })
+      .rotateY(-Math.PI / 2).translate(0.02, 0, 0);
+    const z = P.roofRearZ + 0.10;
+    const m = new THREE.Mesh(geo, MAT.roofPaint);
+    m.position.set(0, roofSurfaceY(P, 0, z + 0.08) + CONFIG.glass.roofMetalY * 0.5, z);
+    addMesh(g, 'AntennaShark', m);
+  } else if (type === 'rod'){
+    const x = P.halfW * 0.75, z = P.hoodFrontZ - 0.15, y = hoodTopY(P, z);
+    addCyl(g, 'AntennaBase', 0.012, 0.03, [x, y + 0.01, z], MAT.chrome);
+    addTubeBetween(g, 'AntennaRod', new THREE.Vector3(x, y, z), new THREE.Vector3(x, y + 0.55, z - 0.12), 0.004, MAT.chrome);
+  }
+}
+
+function buildHoodScoop(g, P, type){
+  if (type === 'none') return;
+  const z0 = P.cabinFrontZ + 0.15, z1 = P.hoodFrontZ - 0.10;
+  if (z1 - z0 < 0.2) return;
+  const yAt = z => hoodTopY(P, z);
+  const tilt = [Math.atan2(yAt(z0) - yAt(z1), z1 - z0), 0, 0];   // sigue la pendiente del capó
+  switch (type){
+    case 'scoop': {
+      const zc = z0 + (z1 - z0) * 0.55, len = 0.40;
+      addBox(g, 'HoodScoop', [0.42, 0.07, len], [0, yAt(zc) + 0.03, zc], MAT.paint, tilt);
+      addBox(g, 'HoodScoopMouth', [0.36, 0.045, 0.02], [0, yAt(zc + len / 2) + 0.035, zc + len / 2 + 0.005], MAT.grilleBase, tilt);
+      break;
+    }
+    case 'vents':
+      for (const s of [-1, 1]) for (let k = 0; k < 4; k++){
+        const z = z0 + (z1 - z0) * (0.3 + k * 0.1);
+        addBox(g, `HoodVent_${s}_${k}`, [0.22, 0.012, 0.025], [s * 0.38 * (P.width / 1.92), yAt(z) + 0.004, z], MAT.grilleBase, tilt);
+      }
+      break;
+    case 'bulge': {
+      const zm = (z0 + z1) / 2;
+      addBox(g, 'HoodBulge', [0.55, 0.045, (z1 - z0) * 0.85], [0, yAt(zm) + 0.012, zm], MAT.paint, tilt);
+      break;
+    }
+  }
+}
+
+// Accesorios exteriores montados sobre la carrocería
+function buildAccessories(P){
+  const g = new THREE.Group();
+  g.name = 'Accessories';
+  const A = CONFIG.accessories;
+  const b = P.bottomY;
+
+  const fb = A.frontBumper, rb = A.rearBumper;
+  buildBumper(g, 'Front', fb.type, P.width * fb.width, b + (P.noseTopY - b) * 0.25 + fb.offsetY, b + 0.012 + fb.offsetY, P.zF + fb.offsetZ, 1, P);
+  buildBumper(g, 'Rear',  rb.type, P.width * rb.width, b + (P.tailTopY - b) * 0.25 + rb.offsetY, b + 0.012 + rb.offsetY, P.zR - rb.offsetZ, -1, P);
+  buildSpoiler(g, P, A.spoiler);
+  buildRoofRack(g, P, A.roofRack.type);
+  buildSideSteps(g, P, A.sideSteps.type);
+  buildFogLights(g, P, A.fogLights.type);
+  buildAntenna(g, P, A.antenna.type);
+  buildHoodScoop(g, P, A.hoodScoop.type);
   return g;
 }
 
@@ -2428,6 +3123,7 @@ function buildCar(){
   car.add(buildFrontDetails(P));
   car.add(buildRearDetails(P));
   car.add(buildSideDetails(P));
+  car.add(buildAccessories(P));
   car.add(buildInterior(P));
 
   const wg = buildWheels(P);
@@ -2451,20 +3147,31 @@ function rebuildWheels(){
   car.add(wheelGroup);
 }
 
+// Copia src dentro de target entrando en los objetos anidados: un preset solo trae parte de cada grupo
+function deepMerge(target, src){
+  for (const [k, v] of Object.entries(src)){
+    if (v && typeof v === 'object' && !Array.isArray(v) && target[k] && typeof target[k] === 'object') deepMerge(target[k], v);
+    else target[k] = v;
+  }
+  return target;
+}
+
+// Configuración completa de un coche prediseñado: valores de fábrica más los del preset
+function presetConfig(presetKey){
+  const p = FIVE_CARS[presetKey];
+  const cfg = deepMerge(JSON.parse(JSON.stringify(DEFAULTS)), JSON.parse(JSON.stringify(p.config)));
+  cfg.model = p.model;
+  return cfg;
+}
+
 function buildShowroomCar(presetKey, posX){
   const p = FIVE_CARS[presetKey];
   if (!p) return null;
 
   const originalConfig = JSON.parse(JSON.stringify(CONFIG));
 
-  for (const k of Object.keys(p.config)){
-    if (typeof p.config[k] === 'object' && !Array.isArray(p.config[k])){
-      Object.assign(CONFIG[k], p.config[k]);
-    } else {
-      CONFIG[k] = p.config[k];
-    }
-  }
-  CONFIG.model = p.model;
+  Object.assign(CONFIG, presetConfig(presetKey));
+  applyPresetGlass(p.model);
   updateMaterials();
 
   const P = derive(PRESETS[CONFIG.model]);
@@ -2477,6 +3184,7 @@ function buildShowroomCar(presetKey, posX){
   carGrp.add(buildFrontDetails(P));
   carGrp.add(buildRearDetails(P));
   carGrp.add(buildSideDetails(P));
+  carGrp.add(buildAccessories(P));
   carGrp.add(buildInterior(P));
 
   const wg = buildWheels(P);
@@ -2540,14 +3248,7 @@ function applyPresetCar(presetKey){
   const p = FIVE_CARS[presetKey];
   if (!p) return;
 
-  for (const k of Object.keys(p.config)){
-    if (typeof p.config[k] === 'object' && !Array.isArray(p.config[k])){
-      Object.assign(CONFIG[k], p.config[k]);
-    } else {
-      CONFIG[k] = p.config[k];
-    }
-  }
-  CONFIG.model = p.model;
+  Object.assign(CONFIG, presetConfig(presetKey), { selectedZone: CONFIG.selectedZone });
   applyPresetGlass(p.model);
   updateMaterials();
   syncUI();
@@ -2634,6 +3335,26 @@ function addSlider(id, outId, get, set, fmt, onChange, min, max, step){
     sync(){ el.value = get(); out.textContent = fmt ? fmt(get()) : get().toFixed(2); },
   });
   return el;
+}
+
+const SELECTS = [];
+function fillSelect(id, options){
+  const el = $(id);
+  el.innerHTML = '';
+  for (const [value, label] of options){
+    const o = document.createElement('option');
+    o.value = value;
+    o.textContent = label;
+    el.appendChild(o);
+  }
+  return el;
+}
+
+// Desplegable ligado a CONFIG: rellena sus opciones, aplica los cambios y se resincroniza en syncUI
+function addSelect(id, options, get, set){
+  const el = fillSelect(id, options);
+  el.addEventListener('change', () => { set(el.value); markDirty(); });
+  SELECTS.push({ sync(){ el.value = get(); } });
 }
 
 const ZONE_PARAMS = {
@@ -2770,6 +3491,9 @@ function bindUI(){
   // Suavizado y grosor pilares
   addSlider('smoothing', 'vSmooth', () => CONFIG.smoothing, v => CONFIG.smoothing = v, v => v.toFixed(2), () => markDirty());
   addSlider('pillarThick', 'vPThick', () => CONFIG.pillars.thick, v => CONFIG.pillars.thick = v, v => v.toFixed(2), () => markDirty());
+  addSlider('pillarCurve', 'vPCurve', () => CONFIG.pillars.curve, v => CONFIG.pillars.curve = v, v => v.toFixed(2), () => markDirty());
+  addSlider('pillarRound', 'vPRound', () => CONFIG.pillars.round, v => CONFIG.pillars.round = v, v => v.toFixed(2), () => markDirty());
+  addSlider('pillarMaxWin', 'vPMaxWin', () => CONFIG.pillars.maxWindow, v => CONFIG.pillars.maxWindow = v, v => v.toFixed(2), () => markDirty());
 
   // Pintura carrocería
   $('paintColor').addEventListener('input', e => {
@@ -2839,7 +3563,13 @@ function bindUI(){
   addSlider('wheelLight', 'vWLight', () => CONFIG.wheelLight, v => CONFIG.wheelLight = v, v => v.toFixed(1), () => updateMaterials());
 
   // Faros delanteros
+  fillSelect('headType', OPTIONS.headlight);
   $('headType').addEventListener('change', e => { CONFIG.headlight.type = e.target.value; markDirty(); });
+  addSelect('headDRL', OPTIONS.drl, () => CONFIG.headlight.drl, v => CONFIG.headlight.drl = v);
+  addSelect('headHousing', OPTIONS.housing, () => CONFIG.headlight.housing, v => CONFIG.headlight.housing = v);
+  addSlider('headSize', 'vHSize', () => CONFIG.headlight.size, v => CONFIG.headlight.size = v, v => v.toFixed(2), () => markDirty());
+  addSlider('headWidth', 'vHWidth', () => CONFIG.headlight.width, v => CONFIG.headlight.width = v, v => v.toFixed(2), () => markDirty());
+  addSlider('headSpacing', 'vHSpacing', () => CONFIG.headlight.spacing, v => CONFIG.headlight.spacing = v, v => v.toFixed(2), () => markDirty());
   addSlider('headIntensity', 'vHead', () => CONFIG.headlight.emissiveIntensity, v => CONFIG.headlight.emissiveIntensity = v, v => v.toFixed(1), () => updateMaterials());
   addSlider('headOffsetZ', 'vHOffZ', () => CONFIG.headlight.offsetZ, v => CONFIG.headlight.offsetZ = v, v => v.toFixed(2), () => markDirty());
   addSlider('headOffsetY', 'vHOffY', () => CONFIG.headlight.offsetY, v => CONFIG.headlight.offsetY = v, v => v.toFixed(2), () => markDirty());
@@ -2858,7 +3588,12 @@ function bindUI(){
   addSlider('tailRotZ', 'vTRotZ', () => CONFIG.taillight.rotZ, v => CONFIG.taillight.rotZ = v, v => v.toFixed(2), () => markDirty());
 
   // Parrilla y líneas
+  fillSelect('grilleType', OPTIONS.grille);
   $('grilleType').addEventListener('change', e => { CONFIG.embeds.grille.type = e.target.value; markDirty(); });
+  addSlider('grilleWidth', 'vGrW', () => CONFIG.embeds.grille.width, v => CONFIG.embeds.grille.width = v, v => v.toFixed(2), () => markDirty());
+  addSlider('grilleHeight', 'vGrH', () => CONFIG.embeds.grille.height, v => CONFIG.embeds.grille.height = v, v => v.toFixed(2), () => markDirty());
+  addSlider('grilleOffsetY', 'vGrY', () => CONFIG.embeds.grille.offsetY, v => CONFIG.embeds.grille.offsetY = v, v => v.toFixed(2), () => markDirty());
+  $('grilleEmblem').addEventListener('change', e => { CONFIG.embeds.grille.emblem = e.target.checked; markDirty(); });
   $('grilleTexture').addEventListener('change', e => { CONFIG.embeds.grille.texture = e.target.value; updateMaterials(); markDirty(); });
   $('btnToggleLines').addEventListener('click', () => { CONFIG.designLines.enabled = !CONFIG.designLines.enabled; markDirty(); });
   addSlider('lineThick', 'vLineThick', () => CONFIG.designLines.thickness, v => CONFIG.designLines.thickness = v, v => v.toFixed(3), () => markDirty());
@@ -2868,6 +3603,37 @@ function bindUI(){
   $('leatherColor').addEventListener('input', e => { CONFIG.interior.leatherColor = e.target.value; updateMaterials(); });
   $('woodColor').addEventListener('input', e => { CONFIG.interior.woodColor = e.target.value; updateMaterials(); });
   $('ambientColor').addEventListener('input', e => { CONFIG.interior.ambientColor = e.target.value; updateMaterials(); });
+
+  // Accesorios: tipo de cada pieza y su posición. Se lee CONFIG en cada llamada porque los presets
+  // y el randomizado sustituyen los objetos completos
+  const acc = key => CONFIG.accessories[key];
+  addSelect('accFrontBumper', OPTIONS.frontBumper, () => acc('frontBumper').type, v => acc('frontBumper').type = v);
+  addSlider('accFBY', 'vAccFBY', () => acc('frontBumper').offsetY, v => acc('frontBumper').offsetY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('accFBZ', 'vAccFBZ', () => acc('frontBumper').offsetZ, v => acc('frontBumper').offsetZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('accFBW', 'vAccFBW', () => acc('frontBumper').width, v => acc('frontBumper').width = v, v => v.toFixed(2), () => markDirty());
+  addSelect('accRearBumper', OPTIONS.rearBumper, () => acc('rearBumper').type, v => acc('rearBumper').type = v);
+  addSlider('accRBY', 'vAccRBY', () => acc('rearBumper').offsetY, v => acc('rearBumper').offsetY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('accRBZ', 'vAccRBZ', () => acc('rearBumper').offsetZ, v => acc('rearBumper').offsetZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('accRBW', 'vAccRBW', () => acc('rearBumper').width, v => acc('rearBumper').width = v, v => v.toFixed(2), () => markDirty());
+
+  addSelect('exhaustType', OPTIONS.exhaust, () => CONFIG.embeds.exhaust.type, v => CONFIG.embeds.exhaust.type = v);
+  addSlider('exhaustY', 'vExY', () => CONFIG.embeds.exhaust.offsetY, v => CONFIG.embeds.exhaust.offsetY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('exhaustSpacing', 'vExSp', () => CONFIG.embeds.exhaust.spacing, v => CONFIG.embeds.exhaust.spacing = v, v => v.toFixed(2), () => markDirty());
+  addSlider('exhaustSize', 'vExSz', () => CONFIG.embeds.exhaust.size, v => CONFIG.embeds.exhaust.size = v, v => v.toFixed(2), () => markDirty());
+
+  addSelect('handleType', OPTIONS.handle, () => CONFIG.embeds.handle.type, v => CONFIG.embeds.handle.type = v);
+  addSlider('handleY', 'vHdY', () => CONFIG.embeds.handle.offsetY, v => CONFIG.embeds.handle.offsetY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('handleZ', 'vHdZ', () => CONFIG.embeds.handle.offsetZ, v => CONFIG.embeds.handle.offsetZ = v, v => v.toFixed(2), () => markDirty());
+  addSelect('mirrorType', OPTIONS.mirror, () => CONFIG.embeds.mirror.type, v => CONFIG.embeds.mirror.type = v);
+
+  addSelect('accSpoiler', OPTIONS.spoiler, () => acc('spoiler').type, v => acc('spoiler').type = v);
+  addSlider('spoilerY', 'vSpY', () => acc('spoiler').offsetY, v => acc('spoiler').offsetY = v, v => v.toFixed(2), () => markDirty());
+  addSlider('spoilerZ', 'vSpZ', () => acc('spoiler').offsetZ, v => acc('spoiler').offsetZ = v, v => v.toFixed(2), () => markDirty());
+  addSlider('spoilerW', 'vSpW', () => acc('spoiler').width, v => acc('spoiler').width = v, v => v.toFixed(2), () => markDirty());
+
+  for (const [id, key] of [['accRoofRack', 'roofRack'], ['accSideSteps', 'sideSteps'], ['accFogLights', 'fogLights'], ['accAntenna', 'antenna'], ['accHoodScoop', 'hoodScoop']]){
+    addSelect(id, OPTIONS[key], () => acc(key).type, v => acc(key).type = v);
+  }
 
   // Botones de acción
   $('btnRandom').addEventListener('click', randomize);
@@ -2908,7 +3674,9 @@ function syncUI(){
   $('leatherColor').value = CONFIG.interior.leatherColor;
   $('woodColor').value = CONFIG.interior.woodColor;
   $('ambientColor').value = CONFIG.interior.ambientColor;
+  $('grilleEmblem').checked = CONFIG.embeds.grille.emblem;
   for (const s of SLIDERS) s.sync();
+  for (const s of SELECTS) s.sync();
   renderZoneSliders();
 }
 
@@ -2978,6 +3746,35 @@ function randomize(){
     CONFIG.roofPaint.syncBodyColor = true;
     CONFIG.roofPaint.color = CONFIG.paint.color;
   }
+
+  // Detalles y accesorios: variedad de faros y piezas, con accesorios coherentes con la carrocería
+  const pick = (list, only) => {
+    const l = only ? list.filter(([v]) => only.includes(v)) : list;
+    return l[Math.floor(Math.random() * l.length)][0];
+  };
+  const chance = p => Math.random() < p;
+  const offroad = CONFIG.model === 'suv';
+  Object.assign(CONFIG.headlight, {
+    type: pick(OPTIONS.headlight),
+    drl: chance(0.5) ? 'none' : pick(OPTIONS.drl),
+    housing: pick(OPTIONS.housing),
+    size: rnd(0.9, 1.15), width: rnd(0.9, 1.2), spacing: 0,
+  });
+  CONFIG.embeds.grille.type  = pick(OPTIONS.grille);
+  CONFIG.embeds.exhaust.type = pick(OPTIONS.exhaust, ['none', 'single', 'dual', 'quad', 'center', 'twin-side', 'rect']);
+  CONFIG.embeds.handle.type  = pick(OPTIONS.handle, ['chrome', 'black', 'flush', 'pull', 'popout', 'classic']);
+  CONFIG.embeds.mirror.type  = pick(OPTIONS.mirror);
+
+  const acc = JSON.parse(JSON.stringify(DEFAULTS.accessories));
+  if (chance(0.35)) acc.frontBumper.type = pick(OPTIONS.frontBumper, offroad ? ['offroad', 'bullbar', 'rally'] : ['chrome', 'american', 'sport']);
+  if (chance(0.35)) acc.rearBumper.type  = pick(OPTIONS.rearBumper, offroad ? ['offroad', 'step'] : ['chrome', 'american', 'diffuser']);
+  if (!offroad && chance(0.3)) acc.spoiler.type = pick(OPTIONS.spoiler, ['lip', 'ducktail', 'wing', 'roof']);
+  if (chance(offroad ? 0.6 : 0.15)) acc.roofRack.type = pick(OPTIONS.roofRack, ['rails', 'rack', 'basket']);
+  if (offroad && chance(0.4)) acc.sideSteps.type = pick(OPTIONS.sideSteps, ['tube', 'board']);
+  if (chance(0.3)) acc.fogLights.type = pick(OPTIONS.fogLights, ['round', 'strip']);
+  if (chance(0.5)) acc.antenna.type = pick(OPTIONS.antenna, ['shark', 'rod']);
+  if (!offroad && chance(0.15)) acc.hoodScoop.type = pick(OPTIONS.hoodScoop, ['scoop', 'vents', 'bulge']);
+  CONFIG.accessories = acc;
 
   updateMaterials();
   syncUI();
