@@ -167,6 +167,13 @@
     border-color: #0052cc !important;
   }
   .highlight-btn:hover { background: #0052cc !important; }
+  .wild-btn {
+    background: linear-gradient(90deg, #ff3d00, #c2185b) !important;
+    color: #fff !important;
+    border-color: #b71c1c !important;
+    font-weight: 700;
+  }
+  .wild-btn:hover { filter: brightness(1.1); }
 
   #hint {
     position: fixed;
@@ -210,6 +217,18 @@
     <span id="status">✓ Listo</span>
   </header>
 
+  <!-- GENERADOR ALEATORIO -->
+  <div class="grp">
+    <label>🎲 Generar coche</label>
+    <div class="actions" style="margin-top:4px">
+      <button id="btnRandom">🎲 Aleatorio realista</button>
+      <button id="btnWild" class="wild-btn">🔥 Diseño estrambótico</button>
+    </div>
+    <div class="actions">
+      <button id="btnReset">↺ Restaurar</button>
+    </div>
+  </div>
+
   <!-- 5 COCHES PREDISEÑADOS Y SHOWROOM -->
   <div class="grp">
     <label for="carPresetSelect">✨ Garaje (5 Modelos Prediseñados)</label>
@@ -229,6 +248,13 @@
   <div class="grp">
     <label for="model">Tipo de carrocería base</label>
     <select id="model"></select>
+  </div>
+
+  <div class="grp">
+    <label>Postura y proporciones</label>
+    <div class="sl"><span>Ancho carrocería</span><input type="range" id="stanceWidth" min="0.85" max="1.30" step="0.01"><b id="vStW"></b></div>
+    <div class="sl"><span>Altura suspensión</span><input type="range" id="stanceHeight" min="-0.10" max="0.20" step="0.005"><b id="vStH"></b></div>
+    <div class="sl"><span>Inclinación (morro abajo +)</span><input type="range" id="stanceRake" min="-0.05" max="0.05" step="0.002"><b id="vStR"></b></div>
   </div>
 
   <div class="grp">
@@ -294,8 +320,9 @@
     <div class="sl"><span>Separación Cristal/Techo</span><input type="range" id="roofGap" min="0.0" max="0.20" step="0.01"><b id="vRoofGap"></b></div>
     <div class="sl"><span>Mover Techo (Y)</span><input type="range" id="roofYOffset" min="-0.2" max="0.2" step="0.01"><b id="vRoofY"></b></div>
     <div class="sl"><span>Mover Techo (Z)</span><input type="range" id="roofZOffset" min="-0.5" max="0.5" step="0.01"><b id="vRoofZ"></b></div>
-    <div class="sl"><span>Metal Techo (X)</span><input type="range" id="roofMetalX" min="0" max="0.9" step="0.01"><b id="vRMX"></b></div>
-    <div class="sl"><span>Metal Techo (Z)</span><input type="range" id="roofMetalZ" min="0" max="0.9" step="0.01"><b id="vRMZ"></b></div>
+    <select id="roofType" style="margin-top:8px"></select>
+    <div class="sl"><span>Metal Techo (X)</span><input type="range" id="roofMetalX" min="0" max="1" step="0.01"><b id="vRMX"></b></div>
+    <div class="sl"><span>Metal Techo (Z)</span><input type="range" id="roofMetalZ" min="0" max="1" step="0.01"><b id="vRMZ"></b></div>
     <div class="sl"><span>Metal Techo (Grosor Y)</span><input type="range" id="roofMetalY" min="0.01" max="0.10" step="0.005"><b id="vRMY"></b></div>
   </div>
 
@@ -466,10 +493,6 @@
   </div>
 
   <div class="grp actions">
-    <button id="btnRandom">🎲 Randomizar</button>
-    <button id="btnReset">↺ Restaurar</button>
-  </div>
-  <div class="grp actions">
     <button id="btnRotate">⏸ Girar cámara</button>
     <button id="btnWheels">🔄 Rodar ruedas</button>
   </div>
@@ -569,6 +592,8 @@ const CONFIG = {
   smoothing: 0.35,
 
   pillars: { thick: 0.06, curve: 0.06, round: 0.5, maxWindow: 1.6 },
+  // Postura: ancho de carrocería, altura de suspensión (las ruedas siguen en el suelo) e inclinación
+  stance: { width: 1.0, rideHeight: 0.0, rake: 0.0 },
   designLines: { enabled: true, thickness: 0.015, random: false },
 
   // Ejes independientes del centro sin alterar el tamaño de la cabina
@@ -606,6 +631,7 @@ const CONFIG = {
     rearZ: -1.40,
     roofFrontZ: 0.55,
     roofRearZ: -0.85,
+    roofType: 'panoramic',
     roofMetalX: 0.06,
     roofMetalZ: 0.06,
     roofMetalY: 0.02,
@@ -894,7 +920,7 @@ const FIVE_CARS = {
         trunk: { height: 1.05, length: 1.20, overhang: 1.00, tailHeight: 1.05, curve: 0.00, linked: false },
         rearBumper: { height: 0.80, curve: 0.40, length: 0.80 },
       },
-      glass: { roofCurve: 0.02, opacity: 0.35, roofMetalX: 0.10, roofMetalZ: 0.10 },
+      glass: { roofCurve: 0.02, opacity: 0.35, roofMetalX: 0.10, roofMetalZ: 0.10, roofType: 'solid' },
       rim: { style: 'blade', spokes: 6, spokeWidth: 0.08, spokeDepth: 0.03, concavity: 0.02, color: '#f8fafc' },
       tire: { treadStyle: 'sport', bumpScale: 0.09 },
       headlight: { type: 'lightbar', emissiveIntensity: 3.8 },
@@ -912,6 +938,11 @@ const BUMPER_SHARE = 0.30;
 function derive(base){
   const P = Object.assign({}, base);
   const Z = CONFIG.zones;
+  const St = CONFIG.stance || { width: 1, rideHeight: 0 };
+  const lift = St.rideHeight || 0;
+  P.width   = base.width * (St.width || 1);
+  P.bottomY = base.bottomY + lift;
+  P.lift    = lift;
 
   P.halfW  = P.width / 2;
   P.cabinW = P.halfW - 0.15;
@@ -966,19 +997,19 @@ function derive(base){
   P.cabinFrontZ = cc + hs + glassFrontDelta;
   P.cabinRearZ  = cc - hs + glassRearDelta;
 
-  P.beltY = base.beltY;
+  P.beltY = base.beltY + lift;
   P.frontBeltY = THREE.MathUtils.clamp(
-    base.beltY * Z.hood.height,
-    base.bottomY + 0.15,
-    base.roofY * Z.cabin.height - 0.12
+    base.beltY * Z.hood.height + lift,
+    P.bottomY + 0.15,
+    base.roofY * Z.cabin.height + lift - 0.12
   );
   P.rearBeltY = THREE.MathUtils.clamp(
-    base.beltY * Z.trunk.height,
-    base.bottomY + 0.15,
-    base.roofY * Z.cabin.height - 0.12
+    base.beltY * Z.trunk.height + lift,
+    P.bottomY + 0.15,
+    base.roofY * Z.cabin.height + lift - 0.12
   );
 
-  P.roofY = base.roofY * Z.cabin.height;
+  P.roofY = base.roofY * Z.cabin.height + lift;
 
   // Adaptación armónica del techo a la cabina
   const baseCabinC    = (base.cabinFrontZ + base.cabinRearZ) / 2;
@@ -1731,7 +1762,8 @@ function sillY(P, z){
 function wheelArches(P){
   const b = P.bottomY;
   const archR   = P.wheelR * (1.25 + CONFIG.smoothing * 0.06);
-  const archTop = P.wheelR * 2.4;
+  // Con la suspensión subida el arco deja más hueco sobre la rueda; bajada, la rueda queda más metida
+  const archTop = Math.max(P.wheelR * 2 + 0.04, P.wheelR * 2.4 + (P.lift || 0) * (P.lift > 0 ? 0.8 : 0.6));
   const steps   = 12 + Math.round(CONFIG.smoothing * 16);
   const topAt = z => z > P.cabinFrontZ ? hoodTopY(P, z) : z < P.cabinRearZ ? trunkTopY(P, z) : sillY(P, z) - 0.03;
   const mid = (P.frontAxleZ + P.rearAxleZ) / 2;
@@ -2801,13 +2833,15 @@ function buildCabin(P){
     return mesh;
   }
 
-  // Chapa metálica del techo usando MAT.roofPaint (color de techo correcto)
-  addCurvedSurface('RoofFront', -oX, oX, gZf, rF, 16, 6, MAT.roofPaint, metalY * 0.5);
-  addCurvedSurface('RoofRear',  -oX, oX, rR, gZr, 16, 6, MAT.roofPaint, metalY * 0.5);
-  addCurvedSurface('RoofSideL', -oX, -gX, gZr, gZf, 6, 16, MAT.roofPaint, metalY * 0.5);
-  addCurvedSurface('RoofSideR',  gX,  oX, gZr, gZf, 6, 16, MAT.roofPaint, metalY * 0.5);
-
-  if (gX > 0.01 && gZf > gZr) {
+  // Chapa metálica del techo usando MAT.roofPaint (color de techo correcto). Techo completo (o metal
+  // al 100 %): una sola chapa sin cristal
+  if (CONFIG.glass.roofType === 'solid' || gX <= 0.01 || gZf - gZr <= 0.005){
+    addCurvedSurface('RoofPanel', -oX, oX, rR, rF, 20, 20, MAT.roofPaint, metalY * 0.5);
+  } else {
+    addCurvedSurface('RoofFront', -oX, oX, gZf, rF, 16, 6, MAT.roofPaint, metalY * 0.5);
+    addCurvedSurface('RoofRear',  -oX, oX, rR, gZr, 16, 6, MAT.roofPaint, metalY * 0.5);
+    addCurvedSurface('RoofSideL', -oX, -gX, gZr, gZf, 6, 16, MAT.roofPaint, metalY * 0.5);
+    addCurvedSurface('RoofSideR',  gX,  oX, gZr, gZf, 6, 16, MAT.roofPaint, metalY * 0.5);
     addCurvedSurface('PanoramicRoof', -gX, gX, gZr, gZf, 12, 16, MAT.roofGlass);
   }
 
@@ -3195,6 +3229,8 @@ const OPTIONS = {
   mudFlaps: [['none', 'Sin faldillas'], ['flaps', 'Faldillas detrás de las ruedas']],
   visors: [['none', 'Sin deflectores'], ['visors', 'Deflectores de ventanilla']],
   plates: [['eu', 'Con matrículas'], ['none', 'Sin matrículas']],
+  paintReal: [['metallic', ''], ['metallic', ''], ['pearl', ''], ['solid', '']],
+  roofType: [['panoramic', 'Techo con cristal panorámico (ajustable)'], ['solid', 'Techo completo de chapa (sin cristal)']],
   wheelCover: [['none', 'Sin tapacubos (llanta a la vista)'], ['aero', 'Tapacubos aerodinámico'], ['classic', 'Tapacubos clásico cromado'],
                ['turbine', 'Tapacubos turbina'], ['moon', 'Disco cromado retro'], ['steelie', 'Llanta de chapa con tapa']],
   archTrim: [['none', 'Sin moldura en los pasos de rueda'], ['black', 'Moldura negra (todoterreno)'], ['chrome', 'Filo cromado'],
@@ -4099,13 +4135,10 @@ function buildCar(){
   wheelGroup = null;
   zoneHighlight = null;
 
-  car.add(buildBody(P));
-  car.add(buildCabin(P));
-  car.add(buildFrontDetails(P));
-  car.add(buildRearDetails(P));
-  car.add(buildSideDetails(P));
-  car.add(buildAccessories(P));
-  car.add(buildInterior(P));
+  for (const part of [buildBody(P), buildCabin(P), buildFrontDetails(P), buildRearDetails(P), buildSideDetails(P), buildAccessories(P), buildInterior(P)]){
+    part.rotation.x = CONFIG.stance.rake || 0;   // inclinación: la carrocería gira, las ruedas no
+    car.add(part);
+  }
 
   const wg = buildWheels(P);
   wheelGroup = wg.group;
@@ -4160,12 +4193,10 @@ function buildShowroomCar(presetKey, posX){
   carGrp.name = 'ShowroomCar_' + presetKey;
   carGrp.userData.presetKey = presetKey;
 
-  carGrp.add(buildBody(P));
-  carGrp.add(buildCabin(P));
-  carGrp.add(buildFrontDetails(P));
-  carGrp.add(buildRearDetails(P));
-  carGrp.add(buildSideDetails(P));
-  carGrp.add(buildAccessories(P));
+  for (const part of [buildBody(P), buildCabin(P), buildFrontDetails(P), buildRearDetails(P), buildSideDetails(P), buildAccessories(P)]){
+    part.rotation.x = CONFIG.stance.rake || 0;
+    carGrp.add(part);
+  }
   carGrp.add(buildInterior(P));
 
   const wg = buildWheels(P);
@@ -4529,6 +4560,10 @@ function bindUI(){
   addSlider('roofGap', 'vRoofGap', () => CONFIG.glass.roofGap, v => CONFIG.glass.roofGap = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofYOffset', 'vRoofY', () => CONFIG.glass.roofYOffset, v => CONFIG.glass.roofYOffset = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofZOffset', 'vRoofZ', () => CONFIG.glass.roofZOffset, v => CONFIG.glass.roofZOffset = v, v => v.toFixed(2), () => markDirty());
+  addSelect('roofType', OPTIONS.roofType, () => CONFIG.glass.roofType, v => CONFIG.glass.roofType = v);
+  addSlider('stanceWidth', 'vStW', () => CONFIG.stance.width, v => CONFIG.stance.width = v, v => v.toFixed(2), () => markDirty());
+  addSlider('stanceHeight', 'vStH', () => CONFIG.stance.rideHeight, v => CONFIG.stance.rideHeight = v, v => v.toFixed(3), () => markDirty());
+  addSlider('stanceRake', 'vStR', () => CONFIG.stance.rake, v => CONFIG.stance.rake = v, v => v.toFixed(3), () => markDirty());
   addSlider('roofMetalX', 'vRMX', () => CONFIG.glass.roofMetalX, v => CONFIG.glass.roofMetalX = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofMetalZ', 'vRMZ', () => CONFIG.glass.roofMetalZ, v => CONFIG.glass.roofMetalZ = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofMetalY', 'vRMY', () => CONFIG.glass.roofMetalY, v => CONFIG.glass.roofMetalY = v, v => v.toFixed(3), () => markDirty());
@@ -4632,6 +4667,7 @@ function bindUI(){
 
   // Botones de acción
   $('btnRandom').addEventListener('click', randomize);
+  $('btnWild').addEventListener('click', randomizeWild);
   $('btnReset').addEventListener('click', resetAll);
   $('btnRotate').addEventListener('click', e => {
     controls.autoRotate = !controls.autoRotate;
@@ -4710,9 +4746,16 @@ function randomize(){
   const rnd = (a, b) => a + Math.random() * (b - a);
   const models = Object.keys(PRESETS);
 
+  // Parte de una postura, unos pilares y un techo de calle (deshace lo que haya dejado un diseño
+  // estrambótico)
+  CONFIG.smoothing = rnd(0.25, 0.6);
+  CONFIG.pillars = JSON.parse(JSON.stringify(DEFAULTS.pillars));
+  Object.assign(CONFIG.glass, { roofCurve: rnd(0.0, 0.12), roofYOffset: 0, roofZOffset: 0, roofGap: DEFAULTS.glass.roofGap, opacity: DEFAULTS.glass.opacity });
+
   // Se repite el muestreo hasta que las proporciones cumplan REALISM
   for (let attempt = 0; attempt < 300; attempt++){
     CONFIG.model = models[Math.floor(Math.random() * models.length)];
+    CONFIG.stance = { width: rnd(0.97, 1.04), rideHeight: CONFIG.model === 'suv' ? rnd(0, 0.06) : rnd(-0.02, 0.02), rake: 0 };
     const base = PRESETS[CONFIG.model];
     // Altura mínima del habitáculo para que quepa un adulto sentado con holgura
     const minCabinH = (REALISM.headroom + base.bottomY + 0.04) / base.roofY;
@@ -4767,6 +4810,14 @@ function randomize(){
     housing: pick(OPTIONS.housing),
     size: rnd(0.9, 1.15), width: rnd(0.9, 1.2), spacing: 0,
   });
+  // Techo: completo de chapa o con cristal panorámico de tamaño variable
+  CONFIG.glass.roofType = chance(0.4) ? 'solid' : 'panoramic';
+  if (CONFIG.glass.roofType === 'panoramic'){
+    CONFIG.glass.roofMetalX = rnd(0.05, 0.45);
+    CONFIG.glass.roofMetalZ = rnd(0.05, 0.45);
+  }
+  const paintType = pick(OPTIONS.paintReal);
+  Object.assign(CONFIG.paint, { type: paintType, ...pickPaint(paintType) });
   CONFIG.taillight.type      = pick(OPTIONS.taillight);
   CONFIG.embeds.intake.type  = pick(OPTIONS.intake);
   CONFIG.embeds.rearVent.type = chance(0.25) ? pick(OPTIONS.rearVent, ['corner', 'slots']) : 'none';
@@ -4795,6 +4846,170 @@ function randomize(){
   if (chance(0.3)) acc.sill.type = pick(OPTIONS.sill, offroad ? ['black', 'chrome'] : ['body', 'chrome', 'carbon']);
   if (chance(0.3)) acc.midLine.type = pick(OPTIONS.midLine, ['crease', 'chrome', 'black', 'double']);
   if (chance(0.35)) acc.highLine.type = pick(OPTIONS.highLine, ['shoulder', 'chrome', 'black']);
+  CONFIG.accessories = acc;
+
+  updateMaterials();
+  syncUI();
+  markDirty();
+}
+
+// Propiedades de pintura de un tipo (metalizado, perla, mate...)
+function pickPaint(type){
+  const p = PAINT_TYPES[type] || PAINT_TYPES.metallic;
+  return { metalness: p.metalness, roughness: p.roughness, clearcoat: p.clearcoat, clearcoatRoughness: p.clearcoatRoughness };
+}
+
+// DISEÑOS ESTRAMBÓTICOS: proporciones extremas, postura agresiva y aerodinámica a la vista. No exige
+// las medidas de un coche de calle (REALISM), solo que la carrocería sea coherente: contorno sin
+// cruces, ruedas dentro de sus pasos y sitio para un piloto
+const WILD = { headroom: 0.92, cabinSpan: [1.3, 4.4], minHood: 0.10, tyreClear: 0.10 };
+
+// Contorno lateral sin autointersecciones (se comprueba sin suavizar, que es mucho más rápido)
+function outlineClean(P){
+  const sm = CONFIG.smoothing;
+  CONFIG.smoothing = 0;
+  const polys = bodyProfilePoints(P);
+  CONFIG.smoothing = sm;
+  const d = (a, b, c) => (c.x - a.x) * (b.y - a.y) - (b.x - a.x) * (c.y - a.y);
+  const sgn = v => v > 1e-9 ? 1 : v < -1e-9 ? -1 : 0;
+  for (const pts of polys){
+    const n = pts.length;
+    for (let i = 0; i < n; i++){
+      const p1 = pts[i], p2 = pts[(i + 1) % n];
+      for (let j = i + 2; j < n; j++){
+        if (i === 0 && j === n - 1) continue;
+        const p3 = pts[j], p4 = pts[(j + 1) % n];
+        const a = sgn(d(p3, p4, p1)), b = sgn(d(p3, p4, p2)), c = sgn(d(p1, p2, p3)), e = sgn(d(p1, p2, p4));
+        if (a * b < 0 && c * e < 0) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function isBuildableWild(){
+  const P = derive(PRESETS[CONFIG.model]);
+  if (![P.roofY, P.zF, P.zR, P.cabinFrontZ, P.cabinRearZ, P.noseTopY, P.tailTopY, P.frontBeltY, P.rearBeltY].every(Number.isFinite)) return false;
+  const span = P.cabinFrontZ - P.cabinRearZ;
+  const arches = wheelArches(P);
+  return P.roofY - (P.bottomY + 0.04) >= WILD.headroom
+    && span >= WILD.cabinSpan[0] && span <= WILD.cabinSpan[1]
+    && P.hoodFrontZ - P.cabinFrontZ >= WILD.minHood && P.cabinRearZ - P.trunkRearZ >= WILD.minHood
+    && P.frontAxleZ + P.wheelR <= P.zF - WILD.tyreClear && P.rearAxleZ - P.wheelR >= P.zR + WILD.tyreClear
+    && P.frontAxleZ - P.rearAxleZ > 2 * P.wheelR + 0.4
+    && P.roofFrontZ - P.roofRearZ > 0.3
+    && !!arches.front && !!arches.rear
+    && wheelsCovered(P) && outlineClean(P);
+}
+
+function randomizeWild(){
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const chance = p => Math.random() < p;
+  const pickV = list => list[Math.floor(Math.random() * list.length)];
+  // Dos familias: deportivo extremo (bajo, ancho, con alerones) o monstruo todoterreno (alto, ruedas enormes)
+  const monster = chance(0.22);
+  let ok = false;
+  for (let attempt = 0; attempt < 400 && !ok; attempt++){
+    CONFIG.model = monster ? pickV(['suv', 'compact', 'sedan']) : pickV(Object.keys(PRESETS));
+    CONFIG.stance = monster
+      ? { width: rnd(1.06, 1.24), rideHeight: rnd(0.08, 0.18), rake: rnd(-0.02, 0.01) }
+      : { width: rnd(1.02, 1.26), rideHeight: rnd(-0.09, 0.0), rake: rnd(-0.01, 0.04) };
+    CONFIG.frontAxleOffset = rnd(-0.25, 0.25);
+    CONFIG.rearAxleOffset  = rnd(-0.25, 0.25);
+    CONFIG.wheelRadius     = monster ? rnd(1.25, 1.5) : rnd(1.0, 1.3);
+    CONFIG.wheelSpacer     = monster ? rnd(0.08, 0.18) : rnd(0.02, 0.12);
+    CONFIG.smoothing       = rnd(0, 1);
+    CONFIG.zones = {
+      frontBumper: { ...DEFAULTS.zones.frontBumper, height: rnd(0.35, 1.1), curve: rnd(0.1, 2.5), length: rnd(0.5, 2.0) },
+      hood:        { ...DEFAULTS.zones.hood, height: rnd(0.75, 1.15), length: rnd(0.7, 1.6), overhang: rnd(0.5, 1.6), noseHeight: rnd(0.45, 1.05), curve: rnd(-0.4, 0.6) },
+      cabin:       { height: monster ? rnd(0.95, 1.15) : rnd(0.78, 1.05), length: rnd(0.8, 1.3) },
+      trunk:       { ...DEFAULTS.zones.trunk, height: rnd(0.8, 1.3), length: rnd(0.6, 1.4), overhang: rnd(0.4, 1.5), tailHeight: rnd(0.55, 1.25), curve: rnd(-0.4, 0.5) },
+      rearBumper:  { ...DEFAULTS.zones.rearBumper, height: rnd(0.45, 1.15), curve: rnd(0.1, 2.5), length: rnd(0.5, 2.0) },
+    };
+    applyPresetGlass(CONFIG.model);
+    Object.assign(CONFIG.glass, {
+      frontZ: CONFIG.glass.frontZ + rnd(-0.35, 0.25), rearZ: CONFIG.glass.rearZ + rnd(-0.2, 0.35),
+      roofCurve: rnd(-0.1, 0.45), roofYOffset: rnd(-0.12, 0.04), roofZOffset: rnd(-0.3, 0.3),
+    });
+    ok = isBuildableWild();
+  }
+  if (!ok){
+    // Ningún intento encajó: cupé bajo y ancho de reserva
+    CONFIG.model = 'coupe';
+    CONFIG.stance = { width: 1.16, rideHeight: -0.05, rake: 0.02 };
+    CONFIG.frontAxleOffset = 0; CONFIG.rearAxleOffset = 0;
+    CONFIG.wheelRadius = 1.1; CONFIG.wheelSpacer = 0.08;
+    CONFIG.zones = JSON.parse(JSON.stringify(DEFAULTS.zones));
+    applyPresetGlass(CONFIG.model);
+    Object.assign(CONFIG.glass, { roofCurve: 0.2, roofYOffset: -0.05, roofZOffset: -0.1 });
+  }
+
+  // Pintura llamativa, techo en contraste y cristales oscuros
+  const hue = Math.random();
+  CONFIG.paint.color = '#' + new THREE.Color().setHSL(hue, rnd(0.8, 1.0), rnd(0.28, 0.46)).getHexString();
+  const paintType = pickV(['metallic', 'pearl', 'matte', 'matte', 'solid']);
+  Object.assign(CONFIG.paint, { type: paintType, ...pickPaint(paintType) });
+  if (chance(0.6)){
+    CONFIG.roofPaint.syncBodyColor = false;
+    CONFIG.roofPaint.color = chance(0.7) ? '#0b0b0d' : '#' + new THREE.Color().setHSL((hue + 0.5) % 1, 0.8, 0.45).getHexString();
+  } else {
+    CONFIG.roofPaint.syncBodyColor = true;
+    CONFIG.roofPaint.color = CONFIG.paint.color;
+  }
+  CONFIG.glass.roofType = chance(0.55) ? 'solid' : 'panoramic';
+  CONFIG.glass.roofMetalX = rnd(0.05, 0.5);
+  CONFIG.glass.roofMetalZ = rnd(0.05, 0.5);
+  CONFIG.glass.opacity = rnd(0.45, 0.8);
+  CONFIG.pillars = { thick: rnd(0.04, 0.11), curve: rnd(0.04, 0.25), round: rnd(0.2, 1), maxWindow: rnd(1.2, 2.2) };
+
+  // Ópticas y detalles agresivos
+  Object.assign(CONFIG.headlight, {
+    type: pickV(['wrap-blade', 'wrap-boomerang', 'wrap', 'wrap-split', 'hyper', 'arrow', 'triangle', 'slim', 'l-shape', 'c-shape', 'pixel']),
+    drl: pickV(['line', 'L', 'bar', 'none']), housing: pickV(['black', 'none']),
+    size: rnd(0.85, 1.25), width: rnd(1.0, 1.5), spacing: 0, offsetY: 0, offsetZ: 0, rotX: 0, rotY: 0, rotZ: 0,
+  });
+  Object.assign(CONFIG.taillight, { type: pickV(['wrap-blade', 'wrap-c', 'wrap', 'wrap-tall', 'bar', 'neon']), offsetY: 0, offsetZ: 0, rotX: 0, rotY: 0, rotZ: 0 });
+  Object.assign(CONFIG.embeds.intake, { type: monster ? pickV(['wide', 'classic', 'triple']) : pickV(['sport', 'sport', 'curtain', 'wide']), size: rnd(1.0, 1.3), offsetY: 0 });
+  CONFIG.embeds.rearVent.type = monster ? 'none' : pickV(['corner', 'corner', 'slots', 'none']);
+  CONFIG.embeds.grille.type   = monster ? pickV(['bars-h', 'slats', 'cross', 'vertical-slots']) : pickV(['honeycomb', 'hex', 'shield', 'mesh', 'none', 'twin']);
+  CONFIG.embeds.exhaust.type  = monster ? pickV(['stacks', 'side', 'dual']) : pickV(['quad', 'center', 'twin-side', 'side', 'rect']);
+  CONFIG.embeds.handle.type   = pickV(['flush', 'popout', 'hidden', 'black']);
+  CONFIG.embeds.mirror.type   = pickV(['sport', 'camera']);
+  Object.assign(CONFIG.rim, {
+    style: pickV(['split-5', 'multi-spoke', 'star-5', 'mesh', 'turbine', 'blade']),
+    color: pickV(['#111111', '#1c1c1c', '#c9a227', '#d9d9e0', '#8a1c1c', '#2f3b52']),
+  });
+  CONFIG.tire.treadStyle = monster ? 'all-terrain' : pickV(['racing', 'racing', 'sport']);
+  CONFIG.tire.bumpScale  = monster ? 0.2 : 0.08;
+  CONFIG.interior.ambientColor = '#' + new THREE.Color().setHSL(Math.random(), 1, 0.5).getHexString();
+
+  const acc = JSON.parse(JSON.stringify(DEFAULTS.accessories));
+  if (monster){
+    acc.frontBumper.type = pickV(['bullbar', 'offroad', 'rally']);
+    acc.rearBumper.type  = pickV(['offroad', 'step']);
+    if (chance(0.7)) acc.roofCargo.type = 'lightbar';
+    if (chance(0.4)) acc.roofRack.type = 'basket';
+    if (chance(0.6)) acc.snorkel.type = 'right';
+    if (chance(0.5)) acc.spareWheel.type = 'rear';
+    if (chance(0.8)) acc.flares.type = 'flares';
+    if (chance(0.5)) acc.mudFlaps.type = 'flaps';
+    if (chance(0.5)) acc.sideSteps.type = 'tube';
+    if (chance(0.5)) acc.fogLights.type = 'round';
+    acc.archTrim.type = 'black';
+    acc.sill.type = 'black';
+  } else {
+    acc.frontBumper.type = chance(0.7) ? 'sport' : 'integrated';
+    acc.rearBumper.type  = chance(0.8) ? 'diffuser' : 'integrated';
+    acc.spoiler.type     = pickV(['wing', 'wing', 'ducktail', 'roof', 'lip']);
+    if (chance(0.5)) acc.flares.type = 'flares';
+    acc.sill.type = pickV(['carbon', 'carbon', 'black', 'body']);
+    if (chance(0.5)) acc.archTrim.type = pickV(['carbon', 'black']);
+    if (chance(0.6)) acc.hoodScoop.type = pickV(['scoop', 'vents', 'bulge']);
+    if (chance(0.4)) acc.highLine.type = 'shoulder';
+    if (chance(0.2)) acc.midLine.type = pickV(['black', 'crease']);
+    if (chance(0.15)) acc.wheelCover.type = 'turbine';
+    acc.antenna.type = 'shark';
+  }
   CONFIG.accessories = acc;
 
   updateMaterials();
