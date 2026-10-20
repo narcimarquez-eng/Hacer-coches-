@@ -291,6 +291,15 @@
   </div>
 
   <div class="grp">
+    <label for="renderQuality">Calidad de imagen</label>
+    <select id="renderQuality">
+      <option value="alta">Alta: oclusión ambiental, brillo de luces y suelo pulido</option>
+      <option value="media">Media: brillo de luces (más fluida en móvil)</option>
+      <option value="basica">Básica: sin efectos</option>
+    </select>
+  </div>
+
+  <div class="grp">
     <label for="model">Tipo de carrocería base</label>
     <select id="model"></select>
   </div>
@@ -564,9 +573,14 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls }   from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFExporter }    from 'three/addons/exporters/GLTFExporter.js';
 import { GLTFLoader }      from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { GTAOPass }        from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
+import { Reflector }       from 'three/addons/objects/Reflector.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -581,7 +595,38 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf0f2f5);
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+// Estudio fotográfico: cúpula con degradado (cielo claro, horizonte gris, suelo oscuro) y softboxes
+// muy brillantes. Sus reflejos en la pintura, el cristal y el cromo son las franjas de luz largas
+// de las fotos de coches
+function studioEnvironment(){
+  const env = new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(40, 48, 24), new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `varying vec3 vP;
+      void main(){
+        float h = vP.y;
+        vec3 top = vec3(0.95, 0.97, 1.0) * 1.15, hor = vec3(0.74, 0.76, 0.80), bot = vec3(0.22, 0.23, 0.25);
+        vec3 c = h > 0.0 ? mix(hor, top, pow(h, 0.6)) : mix(hor, bot, pow(-h, 0.45));
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  })));
+  const softbox = (w, h, pos, k) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k), side: THREE.DoubleSide }));
+    m.position.set(...pos);
+    m.lookAt(0, 0, 0);
+    env.add(m);
+  };
+  softbox(16, 4.5, [0, 14, 0], 6);       // softbox cenital alargado
+  softbox(2.5, 10, [-13, 6, 0], 4);      // tiras laterales
+  softbox(2.5, 10, [13, 6, 0], 4);
+  softbox(10, 2, [0, 5, 14], 3);         // delante y detrás
+  softbox(10, 2, [0, 5, -14], 3);
+  softbox(6, 6, [9, 9, 9], 2.2);         // relleno en diagonal
+  return env;
+}
+scene.environment = pmrem.fromScene(studioEnvironment(), 0.02).texture;
 
 const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 200);
 camera.position.set(6.2, 3.2, 7.5);
@@ -630,6 +675,98 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
+
+// Suelo pulido (calidad alta): un espejo bajo una capa del color del fondo casi opaca, así el coche
+// se refleja muy suave
+const floorReflector = new Reflector(new THREE.CircleGeometry(32, 64), { textureWidth: 1024, textureHeight: 1024, color: 0xb8bcc4 });
+floorReflector.rotation.x = -Math.PI / 2;
+floorReflector.position.y = -0.003;
+scene.add(floorReflector);
+const floorGloss = new THREE.Mesh(new THREE.CircleGeometry(32.5, 64),
+  new THREE.MeshBasicMaterial({ color: 0xf0f2f5, transparent: true, opacity: 0.86, depthWrite: false }));
+floorGloss.rotation.x = -Math.PI / 2;
+floorGloss.position.y = -0.0015;
+scene.add(floorGloss);
+
+// Sombra de contacto: mancha difuminada bajo cada coche (no se exporta al GLB)
+const contactShadows = new THREE.Group();
+contactShadows.name = 'ContactShadows';
+scene.add(contactShadows);
+const contactShadowTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 512;
+  const x = c.getContext('2d');
+  x.filter = 'blur(26px)';
+  x.fillStyle = 'rgba(0,0,0,1)';
+  x.beginPath();
+  x.roundRect ? x.roundRect(52, 60, 152, 392, 60) : x.rect(52, 60, 152, 392);
+  x.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+function addContactShadow(P, x = 0){
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(P.width * 1.3, (P.zF - P.zR) * 1.12),
+    new THREE.MeshBasicMaterial({ map: contactShadowTex, transparent: true, opacity: 0.62, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, 0.003, (P.zF + P.zR) / 2);
+  m.renderOrder = -1;
+  contactShadows.add(m);
+}
+function clearContactShadows(){
+  for (const m of [...contactShadows.children]){ m.geometry.dispose(); m.material.dispose(); contactShadows.remove(m); }
+}
+
+// Posprocesado: oclusión ambiental (sombras de contacto entre piezas), brillo de las luces y salida
+// con el mapeo de tonos. Calidad alta: todo y suelo pulido; media: solo brillo; básica: nada
+const RENDER = { quality: (() => { try { return localStorage.getItem('pcs.quality'); } catch { return null; } })() || (innerWidth > 760 ? 'alta' : 'media') };
+// Destino con antialiasing (MSAA): sin él, el posprocesado deja bordes dentados
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { samples: 4, type: THREE.HalfFloatType }));
+const gtaoPass = new GTAOPass(scene, camera, innerWidth, innerHeight);
+gtaoPass.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.5, scale: 1.0, samples: 12 });
+gtaoPass.blendIntensity = 0.9;
+// La oclusión no debe volver a pintar el espejo del suelo
+{
+  const ov = gtaoPass.overrideVisibility.bind(gtaoPass), rv = gtaoPass.restoreVisibility.bind(gtaoPass);
+  gtaoPass.overrideVisibility = () => { ov(); floorReflector.visible = false; floorGloss.visible = false; contactShadows.visible = false; };
+  gtaoPass.restoreVisibility = () => { rv(); applyQuality(); };
+}
+// Umbral alto: solo brillan las luces (emisivas por encima del fondo) y algún destello del cromo
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.5, 2.5);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(gtaoPass);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+// Con posprocesado el fondo también pasa por el mapeo de tonos (ACES): se busca el color lineal que
+// después del mapeo da exactamente el gris claro de la página
+const PAGE_BG = new THREE.Color(0xf0f2f5);
+function acesInverse(target, exposure){
+  const fit = v => (v * (v + 0.0245786) - 0.000090537) / (v * (0.983729 * v + 0.4329510) + 0.238081);
+  const aces = c => {
+    const k = exposure / 0.6, r = c[0] * k, g = c[1] * k, b = c[2] * k;
+    const i = [0.59719 * r + 0.35458 * g + 0.04823 * b, 0.07600 * r + 0.90834 * g + 0.01566 * b, 0.02840 * r + 0.13383 * g + 0.83777 * b].map(fit);
+    return [1.60475 * i[0] - 0.53108 * i[1] - 0.07367 * i[2], -0.10208 * i[0] + 1.10813 * i[1] - 0.00605 * i[2], -0.00327 * i[0] - 0.07276 * i[1] + 1.07602 * i[2]];
+  };
+  const t = [target.r, target.g, target.b];
+  let c = [...t];
+  for (let it = 0; it < 80; it++){
+    const o = aces(c);
+    c = c.map((v, k) => Math.max(0, v + (t[k] - o[k]) * 1.5));
+  }
+  return new THREE.Color(c[0], c[1], c[2]);
+}
+const TONED_BG = acesInverse(PAGE_BG, renderer.toneMappingExposure);
+floorGloss.material.color.copy(TONED_BG);
+
+function applyQuality(){
+  const q = RENDER.quality;
+  scene.background = q === 'basica' ? PAGE_BG : TONED_BG;
+  gtaoPass.enabled = q === 'alta';
+  bloomPass.enabled = q !== 'basica';
+  floorReflector.visible = floorGloss.visible = q === 'alta';
+  contactShadows.visible = true;
+}
+applyQuality();
 
 const CONFIG = {
   model: 'sedan',
@@ -4385,6 +4522,8 @@ function buildCar(){
   wheelGroup = null;
   zoneHighlight = null;
 
+  clearContactShadows();
+  addContactShadow(P);
   for (const part of [buildBody(P), buildCabin(P), buildFrontDetails(P), buildRearDetails(P), buildSideDetails(P), buildAccessories(P), buildInterior(P)]){
     part.rotation.x = CONFIG.stance.rake || 0;   // inclinación: la carrocería gira, las ruedas no
     car.add(part);
@@ -4462,6 +4601,7 @@ function buildShowroomCar(presetKey, posX){
   });
 
   carGrp.position.x = posX;
+  addContactShadow(P, posX);
 
   Object.assign(CONFIG, originalConfig);
   updateMaterials();
@@ -4471,6 +4611,7 @@ function buildShowroomCar(presetKey, posX){
 
 function buildShowroom(){
   disposeGroup(showroomGroup);
+  clearContactShadows();
   const keys = ['fastback', 'crossover', 'retro', 'gt4', 'mpv'];
   const spacing = 3.6;
   const startX = -((keys.length - 1) * spacing) / 2;
@@ -4519,6 +4660,8 @@ function layoutView(){
   if (bottomSheet) h = Math.max(140, Math.round(r.top));
   else if (r.width > 0){ x = Math.min(Math.round(r.right), W - 200); w = W - x; }
   renderer.setSize(w, h);
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(w, h);
   Object.assign(renderer.domElement.style, { position: 'fixed', left: x + 'px', top: '0px' });
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -4814,6 +4957,12 @@ function bindUI(){
     if (e.target.value) applyPresetCar(e.target.value);
   });
   $('btnShowroom').addEventListener('click', toggleShowroom);
+  $('renderQuality').value = RENDER.quality;
+  $('renderQuality').addEventListener('change', e => {
+    RENDER.quality = e.target.value;
+    try { localStorage.setItem('pcs.quality', RENDER.quality); } catch {}
+    applyQuality();
+  });
 
   const modelSel = $('model');
   for (const [k, v] of Object.entries(PRESETS)){
@@ -5455,7 +5604,8 @@ layoutView();
     buildCar();
   }
   controls.update();
-  renderer.render(scene, camera);
+  if (RENDER.quality === 'basica') renderer.render(scene, camera);
+  else composer.render();
 })();
 </script>
 </body>
