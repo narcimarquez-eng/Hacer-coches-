@@ -23,6 +23,9 @@ ROLES = {   # color solo para la vista previa en Blender
     'dark': (0.03, 0.03, 0.03), 'leather': (0.15, 0.1, 0.07), 'red': (0.8, 0.05, 0.02),
     'trim': (0.9, 0.9, 0.92), 'plate': (1.0, 1.0, 1.0), 'mirror': (0.8, 0.82, 0.85),
     'plastic': (0.06, 0.06, 0.07), 'lens': (0.85, 0.9, 0.95), 'rim': (0.75, 0.76, 0.8),
+    'dash': (0.06, 0.05, 0.05), 'wood': (0.3, 0.16, 0.06), 'ambient': (0.2, 0.4, 1.0), 'analog': (0.85, 0.85, 0.85),
+    'screen': (0.03, 0.05, 0.15), 'screen_cluster': (0.03, 0.05, 0.15), 'screen_info': (0.03, 0.05, 0.15),
+    'screen_wide': (0.03, 0.05, 0.15), 'screen_rear': (0.03, 0.05, 0.15),
 }
 
 
@@ -727,6 +730,251 @@ def aggressive_aero():
     mesh(r, 'blades', blades, 'carbon', 0.003)
 
 
+# --------------------------------------------------------------------------- interiores
+# Salpicaderos: origen en el centro del salpicadero, ancho de diseño 1.50 m (x), cara hacia el
+# conductor en -z (el parabrisas queda hacia +z). El conductor va a la izquierda (x = -0.325).
+# Las pantallas son caras con UV para que la app les ponga su imagen (mirando hacia -z)
+SCREEN_UV = [(0, 0), (1, 0), (1, 1), (0, 1)]
+XD = -0.325
+
+
+def screen_quad(w, h, c, tilt=0.0):
+    v = [(w / 2, -h / 2, 0.0), (-w / 2, -h / 2, 0.0), (-w / 2, h / 2, 0.0), (w / 2, h / 2, 0.0)]
+    return Geo(v, [[0, 1, 2, 3]]).rot('x', tilt).move(*c)
+
+
+def behind(c, tilt, d):
+    """Punto d metros detrás de c (hacia +z) en una superficie inclinada tilt."""
+    return (c[0], c[1] - d * math.sin(tilt), c[2] + d * math.cos(tilt))
+
+
+def add_screen(r, name, w, h, c, tilt, role, frame=0.012, frame_role='dark'):
+    mesh(r, name, screen_quad(w, h, c, tilt), role, keep_winding=True, uv=SCREEN_UV)
+    mesh(r, name + '_frame', box(w + 2 * frame, h + 2 * frame, 0.014).rot('x', tilt).move(*behind(c, tilt, 0.0075)), frame_role, 0.004)
+
+
+def ring_y(r_in, r_out, h, c):
+    """Anillo plano con eje vertical."""
+    return lathe([(r_in, 0.0), (r_out, 0.0), (r_out, h), (r_in, h)], 32).rot('x', -math.pi / 2).move(*c)
+
+
+def ring_z(r_in, r_out, d, c):
+    """Anillo con eje en z (mirando al conductor)."""
+    return lathe([(r_in, -d / 2), (r_out, -d / 2), (r_out, d / 2), (r_in, d / 2)], 32).move(*c)
+
+
+def round_vent(c):
+    g = ring_z(0.038, 0.046, 0.014, c)
+    blades = ring_of(lambda: box(0.036, 0.008, 0.004).rot('x', 0.5), 6, 0.018, 0.0).move(*c)
+    return g, blades
+
+
+def slat_vent(w, h, c, n=3):
+    frame = Geo().merge(box(w, 0.006, 0.012, (c[0], c[1] + h / 2, c[2])), box(w, 0.006, 0.012, (c[0], c[1] - h / 2, c[2])),
+                        box(0.006, h, 0.012, (c[0] - w / 2, c[1], c[2])), box(0.006, h, 0.012, (c[0] + w / 2, c[1], c[2])))
+    slats = Geo().merge(*[box(w - 0.01, 0.004, 0.014, (c[0], c[1] - h / 2 + h * (k + 1) / (n + 1), c[2])).rot('x', 0.3, (c[0], c[1] - h / 2 + h * (k + 1) / (n + 1), c[2])) for k in range(n)])
+    back = box(w, h, 0.004, (c[0], c[1], c[2] + 0.01))
+    return frame, slats, back
+
+
+def tweeter_top(c, rim='chrome'):
+    """Altavoz de agudos en la parte superior del salpicadero (mirando hacia arriba)."""
+    return ring_y(0.026, 0.032, 0.004, c), cyl(0.026, 0.004, 'y', (c[0], c[1] + 0.001, c[2]), 24)
+
+
+def dash_common(r, profile, body_role, vents, glove_role='dash'):
+    mesh(r, 'body', prism(profile, 1.50), body_role, 0.02, 4)
+    # Guantera del acompañante con tirador
+    mesh(r, 'glovebox', box(0.40, 0.11, 0.012, (0.33, -0.05, -0.172)), glove_role, 0.008)
+    mesh(r, 'glovebox_handle', box(0.08, 0.012, 0.014, (0.33, -0.004, -0.182)), 'chrome', 0.003)
+    # Equipo de sonido: tweeters en las esquinas y altavoz central encima
+    for x in (-0.66, 0.66):
+        ring, grille = tweeter_top((x, 0.088, 0.03))
+        mesh(r, f'tweeter_ring_{x}', ring, 'chrome')
+        mesh(r, f'tweeter_grille_{x}', grille, 'dark')
+    mesh(r, 'center_speaker', box(0.22, 0.004, 0.06, (0, 0.098, -0.03)), 'dark', 0.002)
+    mesh(r, 'center_speaker_rim', box(0.23, 0.003, 0.07, (0, 0.096, -0.03)), 'chrome', 0.002)
+    # Mandos de climatización y botón de arranque
+    mesh(r, 'climate', box(0.26, 0.05, 0.010, (0.02, -0.06, -0.176)), 'dark', 0.004)
+    mesh(r, 'climate_knobs', Geo().merge(cyl(0.017, 0.022, 'z', (-0.075, -0.06, -0.188), 24), cyl(0.017, 0.022, 'z', (0.115, -0.06, -0.188), 24)), 'chrome', 0.003)
+    mesh(r, 'climate_buttons', Geo().merge(*[box(0.022, 0.012, 0.006, (0.02 + k * 0.03, -0.06, -0.183)) for k in (-1, 0, 1)]), 'alu', 0.002)
+    mesh(r, 'start_button', cyl(0.014, 0.012, 'z', (XD + 0.22, -0.03, -0.18), 24), 'red', 0.003)
+    if vents == 'round':
+        for x, y in ((-0.64, 0.0), (0.64, 0.0), (-0.12, 0.0), (0.16, 0.0)):
+            g, b = round_vent((x, y, -0.178))
+            mesh(r, f'vent_ring_{x}', g, 'chrome')
+            mesh(r, f'vent_blades_{x}', b, 'dark')
+    elif vents == 'slats':
+        for x in (-0.64, 0.64, -0.17, 0.21):
+            f, sl, bk = slat_vent(0.12, 0.05, (x, 0.0 if abs(x) > 0.5 else 0.065, -0.178))
+            mesh(r, f'vent_frame_{x}', f, 'chrome')
+            mesh(r, f'vent_slats_{x}', sl, 'chrome')
+            mesh(r, f'vent_back_{x}', bk, 'dark')
+    else:
+        mesh(r, 'vent_slit', box(1.40, 0.008, 0.012, (0, 0.012, -0.170)), 'dark')
+
+
+def dashboards():
+    body = [(0.16, 0.06), (0.02, 0.10), (-0.10, 0.09), (-0.17, 0.04), (-0.17, -0.02), (-0.12, -0.10), (0.16, -0.10)]
+    visor = [(-0.03, 0.0), (-0.19, 0.0), (-0.18, 0.02), (-0.03, 0.05)]
+
+    r = part('dash_sport')
+    dash_common(r, body, 'dash', 'round')
+    mesh(r, 'carbon_band', box(1.40, 0.05, 0.010, (0, -0.012, -0.172)), 'carbon', 0.003)
+    mesh(r, 'ambient', box(1.38, 0.005, 0.006, (0, -0.04, -0.176)), 'ambient')
+    mesh(r, 'binnacle', prism(visor, 0.36, 'zy', (XD, 0.11, 0.0)), 'dash', 0.01)
+    add_screen(r, 'cluster', 0.30, 0.10, (XD, 0.06, -0.16), 0.18, 'screen_cluster')
+    add_screen(r, 'center', 0.22, 0.13, (0.02, 0.06, -0.178), 0.10, 'screen_info')
+
+    r = part('dash_luxury')
+    dash_common(r, body, 'dash', 'slats')
+    mesh(r, 'top_pad', prism([(0.12, 0.085), (0.0, 0.112), (-0.10, 0.10), (-0.15, 0.07), (0.12, 0.07)], 1.48), 'leather', 0.015, 4)
+    mesh(r, 'wood_band', box(1.40, 0.045, 0.012, (0, -0.005, -0.173)), 'wood', 0.004)
+    mesh(r, 'chrome_line', box(1.40, 0.004, 0.006, (0, 0.022, -0.178)), 'chrome')
+    mesh(r, 'binnacle', prism(visor, 0.36, 'zy', (XD, 0.11, 0.0)), 'leather', 0.012)
+    add_screen(r, 'cluster', 0.30, 0.10, (XD, 0.06, -0.16), 0.18, 'screen_cluster', 0.012, 'chrome')
+    add_screen(r, 'center', 0.26, 0.11, (0.02, 0.088, -0.160), 0.14, 'screen_info', 0.010, 'chrome')
+    clock_c = (0.02, -0.012, -0.182)
+    mesh(r, 'clock_ring', ring_z(0.027, 0.032, 0.012, clock_c), 'chrome')
+    mesh(r, 'clock_face', cyl(0.027, 0.004, 'z', clock_c, 32), 'analog')
+    mesh(r, 'clock_hands', Geo().merge(box(0.003, 0.021, 0.002, (0.02, -0.002, -0.186)), box(0.017, 0.003, 0.002, (0.028, -0.012, -0.186))), 'dark')
+
+    r = part('dash_minimal')
+    slim = [(0.16, 0.03), (-0.06, 0.05), (-0.16, 0.03), (-0.16, -0.03), (-0.10, -0.08), (0.16, -0.08)]
+    dash_common(r, slim, 'dash', 'slit')
+    mesh(r, 'ambient', box(1.38, 0.004, 0.006, (0, -0.006, -0.166)), 'ambient')
+    add_screen(r, 'cluster', 0.24, 0.07, (XD, 0.085, -0.13), 0.20, 'screen_cluster')
+    add_screen(r, 'center', 0.36, 0.21, (0.02, 0.17, -0.10), 0.14, 'screen_info', 0.010)
+    mesh(r, 'tablet_stand', box(0.06, 0.10, 0.03, (0.02, 0.07, -0.07)), 'dark', 0.01)
+
+    r = part('dash_futuristic')
+    fut = [(0.16, 0.05), (0.0, 0.08), (-0.12, 0.075), (-0.18, 0.03), (-0.18, -0.03), (-0.10, -0.10), (0.16, -0.10)]
+    dash_common(r, fut, 'dash', 'slit', 'carbon')
+    mesh(r, 'ambient_top', box(1.40, 0.005, 0.006, (0, 0.035, -0.181)), 'ambient')
+    mesh(r, 'ambient_low', box(1.40, 0.005, 0.006, (0, -0.085, -0.150)), 'ambient')
+    add_screen(r, 'wide', 1.10, 0.11, (-0.12, 0.10, -0.135), 0.22, 'screen_wide', 0.010)
+
+
+def steering_wheels():
+    # Volantes: centro en el origen, aro en el plano xy mirando al conductor (-z); la columna sale hacia +z
+    def column(r):
+        mesh(r, 'column', cyl(0.034, 0.16, 'z', (0, -0.005, 0.10), 24, r2=0.046), 'dash', 0.006)
+        mesh(r, 'stalks', Geo().merge(box(0.10, 0.012, 0.012, (-0.09, 0.0, 0.06)).rot('z', 0.15, (-0.04, 0.0, 0.06)),
+                                      box(0.10, 0.012, 0.012, (0.09, 0.0, 0.06)).rot('z', -0.15, (0.04, 0.0, 0.06))), 'dark', 0.004)
+
+    def rim_path(radius, flat=None, a0=0.0, a1=2 * math.pi, n=48):
+        pts = []
+        for k in range(n + 1):
+            a = a0 + (a1 - a0) * k / n
+            x, y = radius * math.cos(a), radius * math.sin(a)
+            if flat is not None:
+                y = max(y, flat)
+            pts.append((x, y, 0.0))
+        return pts
+
+    r = part('steer_sport')         # deportivo de base plana con levas
+    mesh(r, 'rim', tube(rim_path(0.175, flat=-0.148), 0.020, 12), 'leather', 0.0, 3, 50)
+    mesh(r, 'marker', box(0.022, 0.03, 0.044, (0, 0.175, 0.0)), 'red', 0.004)
+    mesh(r, 'spokes', Geo().merge(box(0.13, 0.03, 0.02, (-0.10, -0.01, 0.006)), box(0.13, 0.03, 0.02, (0.10, -0.01, 0.006)),
+                                  box(0.03, 0.12, 0.02, (0, -0.095, 0.006))), 'carbon', 0.006)
+    mesh(r, 'pad', box(0.12, 0.09, 0.035, (0, -0.005, 0.012)), 'leather', 0.016, 4)
+    mesh(r, 'badge', cyl(0.015, 0.006, 'z', (0, 0.0, -0.007), 20), 'chrome')
+    mesh(r, 'buttons', Geo().merge(*[box(0.016, 0.012, 0.006, (x, y, -0.006)) for x in (-0.11, -0.085, 0.085, 0.11) for y in (-0.002, -0.022)]), 'alu', 0.002)
+    mesh(r, 'paddles', Geo().merge(box(0.035, 0.065, 0.005, (-0.115, 0.03, 0.045)), box(0.035, 0.065, 0.005, (0.115, 0.03, 0.045))), 'carbon', 0.003)
+    column(r)
+
+    r = part('steer_luxury')        # aro de madera arriba y cuero abajo
+    mesh(r, 'rim_wood', tube(rim_path(0.185, a0=math.radians(35), a1=math.radians(145), n=20), 0.018, 12), 'wood', 0.0, 3, 50)
+    mesh(r, 'rim_leather', tube(rim_path(0.185, a0=math.radians(145), a1=math.radians(395), n=40), 0.0185, 12), 'leather', 0.0, 3, 50)
+    mesh(r, 'spokes', Geo().merge(*[box(0.12, 0.022, 0.016).move(0.11, 0, 0.006).rot('z', math.radians(a)) for a in (-15, 195, 250, 290)]), 'dash', 0.006)
+    mesh(r, 'spoke_trim', Geo().merge(*[box(0.10, 0.004, 0.004).move(0.11, 0.012, -0.004).rot('z', math.radians(a)) for a in (-15, 195)]), 'chrome')
+    mesh(r, 'pad', cyl(0.065, 0.035, 'z', (0, 0, 0.012), 32), 'leather', 0.012)
+    mesh(r, 'pad_ring', ring_z(0.060, 0.068, 0.008, (0, 0, -0.006)), 'chrome')
+    mesh(r, 'badge', cyl(0.018, 0.006, 'z', (0, 0, -0.008), 20), 'chrome')
+    column(r)
+
+    r = part('steer_minimal')       # aro fino de dos brazos
+    mesh(r, 'rim', tube(rim_path(0.18), 0.016, 12), 'leather', 0.0, 3, 50)
+    mesh(r, 'spokes', Geo().merge(box(0.14, 0.024, 0.016, (-0.10, 0.0, 0.006)), box(0.14, 0.024, 0.016, (0.10, 0.0, 0.006))), 'dash', 0.006)
+    mesh(r, 'pad', cyl(0.05, 0.03, 'z', (0, 0, 0.01), 32), 'dash', 0.01)
+    column(r)
+
+    r = part('steer_yoke')          # yugo sin parte superior
+    yoke = rounded_poly([(-0.17, 0.09, 0.0), (-0.17, -0.07, 0.0), (-0.12, -0.11, 0.0), (0.12, -0.11, 0.0), (0.17, -0.07, 0.0), (0.17, 0.09, 0.0)], 0.05, 6)
+    mesh(r, 'rim', tube(yoke, 0.021, 12), 'leather', 0.0, 3, 50)
+    mesh(r, 'grip_caps', Geo().merge(sphere(0.021, (-0.17, 0.09, 0.0), 12), sphere(0.021, (0.17, 0.09, 0.0), 12)), 'leather')
+    mesh(r, 'spoke', box(0.32, 0.03, 0.02, (0, -0.01, 0.006)), 'carbon', 0.006)
+    mesh(r, 'pad', box(0.20, 0.07, 0.03, (0, -0.01, 0.012)), 'dark', 0.012)
+    mesh(r, 'pad_light', box(0.16, 0.004, 0.004, (0, 0.02, -0.004)), 'ambient')
+    column(r)
+
+
+def console_parts():
+    # Origen en la superficie superior de la consola, +z hacia delante
+    up = lambda g: g.rot('x', -math.pi / 2)     # lathe sobre z -> eje vertical
+    r = part('shifter_manual')
+    mesh(r, 'bezel', box(0.12, 0.008, 0.14, (0, 0.004, 0)), 'chrome', 0.004)
+    mesh(r, 'boot', up(lathe([(0.0, 0.0), (0.055, 0.0), (0.045, 0.025), (0.022, 0.055), (0.012, 0.07), (0.0, 0.07)], 24, closed=False)), 'leather', 0.0, 3, 60)
+    mesh(r, 'rod', cyl(0.008, 0.08, 'y', (0, 0.10, 0.0), 12), 'chrome')
+    mesh(r, 'knob', sphere(0.028, (0, 0.155, 0.0), 16).scale(1, 1.15, 1).move(0, -0.023, 0), 'dash')
+    mesh(r, 'knob_cap', cyl(0.018, 0.004, 'y', (0, 0.165, 0.0), 20), 'alu')
+
+    r = part('shifter_auto')
+    mesh(r, 'plate', box(0.10, 0.010, 0.20, (0, 0.005, 0)), 'carbon', 0.004)
+    mesh(r, 'handle', box(0.04, 0.075, 0.10, (0, 0.045, -0.01)), 'leather', 0.015, 4)
+    mesh(r, 'handle_top', box(0.036, 0.006, 0.07, (0, 0.084, -0.015)), 'chrome', 0.002)
+    mesh(r, 'prnd', box(0.016, 0.003, 0.10, (0.035, 0.011, 0.0)), 'ambient')
+
+    r = part('shifter_dial')
+    mesh(r, 'base', box(0.11, 0.010, 0.11, (0, 0.005, 0)), 'dark', 0.004)
+    mesh(r, 'dial', cyl(0.038, 0.032, 'y', (0, 0.026, 0), 32), 'alu', 0.004)
+    mesh(r, 'dial_ring', ring_y(0.039, 0.043, 0.004, (0, 0.012, 0)), 'ambient')
+    mesh(r, 'dial_grip', ring_of(lambda: box(0.004, 0.026, 0.006), 18, 0.038, 0.0).rot('x', -math.pi / 2).move(0, 0.027, 0), 'dark')
+
+    r = part('console_top')         # portavasos, carga inalámbrica y mando giratorio (largo 0.40)
+    mesh(r, 'plate', box(0.21, 0.006, 0.40, (0, 0.003, 0)), 'carbon', 0.003)
+    for x in (-0.05, 0.05):
+        mesh(r, f'cup_ring_{x}', ring_y(0.038, 0.044, 0.006, (x, 0.003, 0.12)), 'chrome')
+        mesh(r, f'cup_well_{x}', cyl(0.038, 0.004, 'y', (x, 0.001, 0.12), 24), 'dark')
+    mesh(r, 'charge_pad', box(0.10, 0.004, 0.14, (0, 0.007, -0.02)), 'dark', 0.002)
+    mesh(r, 'charge_light', Geo().merge(box(0.10, 0.003, 0.004, (0, 0.008, 0.052)), box(0.10, 0.003, 0.004, (0, 0.008, -0.092))), 'ambient')
+    mesh(r, 'knob', cyl(0.028, 0.024, 'y', (0, 0.018, -0.15), 32), 'alu', 0.003)
+    mesh(r, 'knob_ring', ring_y(0.030, 0.036, 0.006, (0, 0.006, -0.15)), 'chrome')
+    mesh(r, 'buttons', Geo().merge(*[box(0.022, 0.006, 0.014, (x, 0.008, z)) for x in (-0.07, 0.07) for z in (-0.13, -0.17)]), 'dark', 0.002)
+
+
+def audio_parts():
+    # Altavoces y piezas de puerta: origen en la superficie, mirando hacia +z (la app los gira)
+    r = part('speaker_door')        # altavoz de graves con rejilla
+    mesh(r, 'surround', ring_z(0.080, 0.095, 0.010, (0, 0, 0.005)), 'chrome')
+    mesh(r, 'cone', lathe([(0.080, 0.002), (0.025, -0.022), (0.0, -0.022), (0.0, -0.024), (0.027, -0.024), (0.082, 0.0)], 32), 'dark')
+    mesh(r, 'cap', sphere(0.022, (0, 0, -0.016), 16).scale(1, 1, 0.5), 'dark')
+    mesh(r, 'grille', Geo().merge(*[ring_z(rr - 0.002, rr, 0.003, (0, 0, 0.011)) for rr in (0.02, 0.035, 0.05, 0.065, 0.08)]), 'alu')
+
+    r = part('speaker_tweeter')
+    mesh(r, 'ring', ring_z(0.022, 0.030, 0.008, (0, 0, 0.004)), 'chrome')
+    mesh(r, 'dome', sphere(0.02, (0, 0, 0.0), 16).scale(1, 1, 0.5), 'alu')
+
+    r = part('speaker_shelf')       # 6x9 de bandeja trasera, mirando hacia arriba (+y)
+    oval = lambda rr, h, yc: cyl(rr, h, 'y', (0, yc, 0), 32).scale(1.5, 1, 1)
+    mesh(r, 'frame', oval(0.075, 0.008, 0.004), 'dark', 0.002)
+    mesh(r, 'grille', oval(0.066, 0.004, 0.009), 'alu')
+    mesh(r, 'ring', ring_y(0.066, 0.075, 0.003, (0, 0.009, 0)).scale(1.5, 1, 1), 'chrome')
+
+    r = part('door_handle_in')
+    mesh(r, 'recess', box(0.11, 0.045, 0.012, (0, 0, 0.006)), 'dark', 0.006)
+    mesh(r, 'lever', box(0.085, 0.012, 0.012, (0, 0.004, 0.018)), 'chrome', 0.004)
+
+    r = part('door_switches')       # botonera de elevalunas sobre el reposabrazos (mirando hacia +y)
+    mesh(r, 'pod', box(0.07, 0.016, 0.14, (0, 0.008, 0)), 'dark', 0.006)
+    mesh(r, 'switches', Geo().merge(*[box(0.022, 0.008, 0.026, (x, 0.018, z)) for x in (-0.017, 0.017) for z in (-0.035, 0.0)]), 'alu', 0.003)
+    mesh(r, 'trim', box(0.072, 0.004, 0.142, (0, 0.017, 0)).scale(1, 1, 1), 'chrome', 0.002)
+
+    r = part('seat_screen')         # pantalla trasera en el reposacabezas, mirando hacia -z
+    mesh(r, 'frame', box(0.23, 0.145, 0.016, (0, 0, -0.008)), 'dark', 0.006)
+    mesh(r, 'screen', screen_quad(0.21, 0.125, (0, 0, -0.0165)), 'screen_rear', keep_winding=True, uv=SCREEN_UV)
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -742,6 +990,10 @@ def main():
     lamp_parts()
     hubcaps()
     aggressive_aero()
+    dashboards()
+    steering_wheels()
+    console_parts()
+    audio_parts()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
