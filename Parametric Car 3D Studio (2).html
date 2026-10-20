@@ -312,6 +312,15 @@
   </div>
 
   <div class="grp">
+    <label>Forma de la carrocería</label>
+    <div class="sl"><span>Esquinas delanteras</span><input type="range" id="shapeCorner" min="0" max="0.40" step="0.01"><b id="vShC"></b></div>
+    <div class="sl"><span>Esquinas traseras</span><input type="range" id="shapeCornerRear" min="0" max="0.40" step="0.01"><b id="vShCR"></b></div>
+    <div class="sl"><span>Hombros redondeados</span><input type="range" id="shapeShoulder" min="0" max="0.14" step="0.005"><b id="vShS"></b></div>
+    <div class="sl"><span>Frontal y zaga abombados</span><input type="range" id="shapeBow" min="0" max="0.15" step="0.005"><b id="vShB"></b></div>
+    <div class="sl"><span>Cristales inclinados</span><input type="range" id="shapeTumble" min="0" max="0.12" step="0.005"><b id="vShT"></b></div>
+  </div>
+
+  <div class="grp">
     <label>Zona seleccionada (clic en el coche)</label>
     <select id="zoneSelect">
       <option value="frontBumper">Paragolpes delantero</option>
@@ -777,6 +786,9 @@ const CONFIG = {
   // Postura: ancho de carrocería, altura de suspensión (las ruedas siguen en el suelo) e inclinación
   stance: { width: 1.0, rideHeight: 0.0, rake: 0.0 },
   designLines: { enabled: true, thickness: 0.015, random: false },
+  // Forma: radio de las esquinas vistas desde arriba, hombros, abombado del frontal y la zaga, y
+  // caída hacia dentro de los cristales laterales
+  shape: { corner: 0.26, cornerRear: 0.22, shoulder: 0.07, bow: 0.07, tumblehome: 0.05 },
 
   // Ejes independientes del centro sin alterar el tamaño de la cabina
   frontAxleOffset: 0.0,
@@ -983,6 +995,7 @@ const FIVE_CARS = {
     desc: 'Perfil bajo, techo que cae hacia la zaga y frente cerrado; blanco perlado con techo de cristal oscuro.',
     model: 'sedan',
     config: {
+      shape: { corner: 0.32, cornerRear: 0.28, shoulder: 0.08, bow: 0.09, tumblehome: 0.06 },
       paint: { color: '#e5e7eb', type: 'pearl', metalness: 0.55, roughness: 0.16, clearcoat: 1.0 },
       roofPaint: { color: '#0b0d10', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -1009,6 +1022,7 @@ const FIVE_CARS = {
     desc: 'Silueta cuadrada, trasera vertical y ruedas grandes; gris mate con techo oscuro.',
     model: 'suv',
     config: {
+      shape: { corner: 0.18, cornerRear: 0.14, shoulder: 0.05, bow: 0.05, tumblehome: 0.04 },
       paint: { color: '#6b7280', type: 'matte', metalness: 0.20, roughness: 0.80, clearcoat: 0.0 },
       roofPaint: { color: '#111827', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -1038,6 +1052,7 @@ const FIVE_CARS = {
     desc: 'Hatchback compacto con faros redondos, carrocería amarilla y techo blanco contrastado.',
     model: 'compact',
     config: {
+      shape: { corner: 0.30, cornerRear: 0.26, shoulder: 0.09, bow: 0.06, tumblehome: 0.05 },
       paint: { color: '#facc15', type: 'solid', metalness: 0.10, roughness: 0.35, clearcoat: 1.0 },
       roofPaint: { color: '#f8fafc', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -1065,6 +1080,7 @@ const FIVE_CARS = {
     desc: 'Cupé de cuatro puertas bajo y ancho, azul metalizado con llantas de cinco radios.',
     model: 'coupe',
     config: {
+      shape: { corner: 0.28, cornerRear: 0.24, shoulder: 0.09, bow: 0.08, tumblehome: 0.07 },
       paint: { color: '#1e3a8a', type: 'metallic', metalness: 0.85, roughness: 0.18, clearcoat: 1.0 },
       roofPaint: { color: '#1e3a8a', syncBodyColor: true },
       frontAxleOffset: 0.0,
@@ -1091,6 +1107,7 @@ const FIVE_CARS = {
     desc: 'Cabina alta, capó corto y zaga vertical para carga; verde menta con techo blanco.',
     model: 'limousine',
     config: {
+      shape: { corner: 0.30, cornerRear: 0.18, shoulder: 0.06, bow: 0.08, tumblehome: 0.04 },
       paint: { color: '#86efac', type: 'solid', metalness: 0.10, roughness: 0.40, clearcoat: 0.6 },
       roofPaint: { color: '#f8fafc', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -2221,14 +2238,652 @@ function bodyProfilePoints(P){
   const v2 = ([z, y]) => new THREE.Vector2(z, y);
   const frontBottom = bottomBetween(P, cF, zF - 0.02).map(v2);
   const rearBottom  = bottomBetween(P, zR + 0.02, cR).map(v2);
-  const front = [...hoodSamples, frontBottom[0].clone(), ...frontBottom];
-  const rear  = [...trunkSamples, ...rearBottom, rearBottom[rearBottom.length - 1].clone()];
+  // Las esquinas superiores junto al habitáculo también se duplican: el capó y el maletero llegan
+  // enteros a la cintura de la puerta, sin un chaflán entre aleta y puerta
+  const front = [...hoodSamples, hoodSamples[hoodSamples.length - 1].clone(), frontBottom[0].clone(), ...frontBottom];
+  const rear  = [trunkSamples[0].clone(), ...trunkSamples, ...rearBottom, rearBottom[rearBottom.length - 1].clone()];
 
   const iters = Math.round(CONFIG.smoothing * 3);
   return [front, rear].map(poly => {
     const smoothed = iters > 0 ? chaikinClosed(poly, iters) : poly;
     return smoothed.map(v => new THREE.Vector2(-v.x, v.y)).reverse();
   });
+}
+
+// ---------------------------------------------------------------------------------------------
+// FORMA DE LA CARROCERÍA (menos cuadrada): esquinas redondeadas vistas desde arriba, frontal y zaga
+// abombados, hombros que se curvan hacia los cristales y cristales laterales inclinados hacia dentro.
+// Se aplica al final como una deformación suave del espacio a todo el coche ya montado: chapa,
+// huecos de ópticas, faros, parrillas, paragolpes, cristales y piezas siguen la misma forma
+const SHAPE_DEFAULT = { corner: 0.26, cornerRear: 0.22, shoulder: 0.07, bow: 0.07, tumblehome: 0.05 };
+
+// Contorno desplazado d hacia fuera (normal media de los dos tramos de cada punto)
+function growOutline(polys, d){
+  return polys.map(pts => {
+    const n = pts.length;
+    let area = 0;
+    for (let i = 0; i < n; i++){ const a = pts[i], c = pts[(i + 1) % n]; area += a.x * c.y - c.x * a.y; }
+    const sg = area > 0 ? 1 : -1;
+    const segN = pts.map((a, i) => {
+      const c = pts[(i + 1) % n], dx = c.x - a.x, dy = c.y - a.y, l = Math.hypot(dx, dy);
+      return l < 1e-9 ? null : [sg * dy / l, -sg * dx / l];
+    });
+    return pts.map((p, i) => {
+      let k = i - 1, m = i;
+      while (!segN[(k + n) % n] && k > i - n) k--;
+      while (!segN[m % n] && m < i + n) m++;
+      const a = segN[(k + n) % n], c = segN[m % n];
+      if (!a || !c) return p.clone();
+      let nx = a[0] + c[0], ny = a[1] + c[1];
+      const l = Math.hypot(nx, ny);
+      if (l < 1e-6){ nx = c[0]; ny = c[1]; } else { nx /= l; ny /= l; }
+      return new THREE.Vector2(p.x + d * nx, p.y + d * ny);
+    });
+  });
+}
+
+// Cortes del contorno lateral (que guarda x = -z) con la vertical z = v (devuelve las y) o con la
+// horizontal y = v (devuelve las z)
+function outlineCuts(polys, axis, v){
+  const out = [];
+  for (const pts of polys) for (let i = 0; i < pts.length; i++){
+    const a = pts[i], c = pts[(i + 1) % pts.length];
+    const pa = axis === 'z' ? -a.x : a.y, pc = axis === 'z' ? -c.x : c.y;
+    if (pa === pc || (pa - v) * (pc - v) > 0) continue;
+    const t = (v - pa) / (pc - pa);
+    out.push(axis === 'z' ? a.y + (c.y - a.y) * t : -(a.x + (c.x - a.x) * t));
+  }
+  return out;
+}
+
+function lut(T, v0, v1, v){
+  const n = T.length - 1;
+  let t = (v - v0) / (v1 - v0) * n;
+  if (t <= 0) return T[0];
+  if (t >= n) return T[n];
+  const i = Math.floor(t);
+  t -= i;
+  return T[i] + (T[i + 1] - T[i]) * t;
+}
+
+function smooth01(x, a, b){
+  if (x <= a) return 0;
+  if (x >= b) return 1;
+  const t = (x - a) / (b - a);
+  return t * t * (3 - 2 * t);
+}
+
+// Parámetros de la deformación para este coche, recortados para que nunca toque los pasos de rueda
+function shapeParams(P){
+  if (P._shape) return P._shape;
+  const C = Object.assign({}, SHAPE_DEFAULT, CONFIG.shape || {});
+  // La chapa queda 1,2 cm por fuera del contorno (como en bodyBlocksGeometry): ahí se ancla el redondeo
+  const polys = growOutline(P.outline || (P.outline = bodyProfilePoints(P)), 0.012);
+  const b = P.bottomY, cF = P.cabinFrontZ, cR = P.cabinRearZ;
+  const H = P.halfW - 0.01;
+  const S = { P, H, cF, cR };
+  const arches = wheelArches(P);
+
+  // Línea superior del costado en z: capó y maletero según el contorno, puertas en la cintura
+  const NZ = 320;
+  S.z0 = P.zR - 0.3; S.z1 = P.zF + 0.3;
+  const zAt = i => S.z0 + (S.z1 - S.z0) * i / NZ;
+  S.topT = new Float32Array(NZ + 1);
+  for (let i = 0; i <= NZ; i++){
+    const z = zAt(i);
+    if (z <= cF && z >= cR){ S.topT[i] = sillY(P, z) + 0.012; continue; }
+    const ys = outlineCuts(polys, 'z', z);
+    S.topT[i] = ys.length ? Math.max(...ys) : b;
+  }
+  // El hombro se desvanece donde la línea superior cae (morro y zaga) y fuera de la carrocería
+  const rs0 = THREE.MathUtils.clamp(C.shoulder, 0, 0.16);
+  const raw = new Float32Array(NZ + 1);
+  const dz = (S.z1 - S.z0) / NZ;
+  for (let i = 0; i <= NZ; i++){
+    const z = zAt(i);
+    if (z > P.zF - 0.02 || z < P.zR + 0.02){ raw[i] = 0; continue; }
+    const i0 = Math.max(0, i - 2), i1 = Math.min(NZ, i + 2);
+    const slope = Math.abs(S.topT[i1] - S.topT[i0]) / ((i1 - i0) * dz);
+    const room = THREE.MathUtils.clamp((S.topT[i] - b - 0.08) / 2, 0, 1);
+    raw[i] = rs0 * (1 - smooth01(slope, 0.45, 1.1)) * Math.min(1, room / Math.max(1e-3, rs0));
+  }
+  S.rsT = new Float32Array(NZ + 1);
+  for (let i = 0; i <= NZ; i++){
+    let s = 0, n = 0;
+    for (let k = -4; k <= 4; k++){ const j = i + k; if (j >= 0 && j <= NZ){ s += raw[j]; n++; } }
+    S.rsT[i] = s / n;
+  }
+  S.rsMax = Math.max(0, ...S.rsT);
+  S.topMin = Math.min(P.frontBeltY, P.rearBeltY, P.noseTopY, P.tailTopY);
+
+  // Frontal y zaga: z más adelantada (y más atrasada) del contorno a cada altura. Por encima del
+  // morro se usa la del borde del capó, así se redondean también sus esquinas
+  const NY = 220;
+  S.y0 = b - 0.5; S.y1 = P.roofY + 0.6;
+  const yAt = j => S.y0 + (S.y1 - S.y0) * j / NY;
+  const capF = Math.max(b + 0.02, P.noseTopY - 0.012), capR = Math.max(b + 0.02, P.tailTopY - 0.012);
+  S.zAF = new Float32Array(NY + 1);
+  S.zAR = new Float32Array(NY + 1);
+  for (let j = 0; j <= NY; j++){
+    const zf = outlineCuts(polys, 'y', THREE.MathUtils.clamp(yAt(j), b + 0.004, capF));
+    const zr = outlineCuts(polys, 'y', THREE.MathUtils.clamp(yAt(j), b + 0.004, capR));
+    S.zAF[j] = zf.length ? Math.max(...zf) : P.zF;
+    S.zAR[j] = zr.length ? Math.min(...zr) : P.zR;
+  }
+
+  // Radio de las esquinas a cada altura: deja siempre chapa recta delante y detrás del paso de
+  // rueda (más arriba del arco la esquina puede ser más redonda)
+  const cornerT = (span, e, want, zAT) => {
+    const T = new Float32Array(NY + 1);
+    const cap = Math.max(0, Math.min(want, H * 0.45, e > 0 ? (P.zF - cF) * 0.5 : (cR - P.zR) * 0.5));
+    for (let j = 0; j <= NY; j++){
+      const y = yAt(j);
+      let m = cap;
+      if (span && y < span.yMax + 0.12){
+        const t = THREE.MathUtils.clamp((y - b) / Math.max(1e-3, span.yMax - b), 0, 1);
+        const zEdge = span.axleZ + e * arches.archR * Math.sqrt(Math.max(0, 1 - t * t));
+        m = Math.min(m, e * (zAT[j] - zEdge) - 0.04);
+      }
+      T[j] = Math.max(0, m);
+    }
+    // Sin cambios bruscos de una altura a otra
+    for (let pass = 0; pass < 2; pass++){
+      for (let j = 1; j <= NY; j++) T[j] = Math.min(T[j], T[j - 1] + 0.012);
+      for (let j = NY - 1; j >= 0; j--) T[j] = Math.min(T[j], T[j + 1] + 0.012);
+    }
+    return T;
+  };
+  S.rcFT = cornerT(arches.front, 1, C.corner, S.zAF);
+  S.rcRT = cornerT(arches.rear, -1, C.cornerRear, S.zAR);
+  S.rcF = Math.max(...S.rcFT);
+  S.rcR = Math.max(...S.rcRT);
+  S.zcF = Math.min(...S.zAF.map((z, j) => z - S.rcFT[j]));
+  S.zcR = Math.max(...S.zAR.map((z, j) => z + S.rcRT[j]));
+
+  // Abombado: crece desde detrás del paso de rueda (o del parabrisas) hasta la cara del frontal
+  const zFaceF = lut(S.zAF, S.y0, S.y1, capF), zFaceR = lut(S.zAR, S.y0, S.y1, capR);
+  S.zbF0 = Math.max(arches.front ? arches.front.axleZ + arches.archR + 0.04 : -Infinity, cF + 0.12);
+  S.zbF1 = Math.max(S.zbF0 + 0.10, Math.min(zFaceF, P.zF - 0.05));
+  S.zbR0 = Math.min(arches.rear ? arches.rear.axleZ - arches.archR - 0.04 : Infinity, cR - 0.12);
+  S.zbR1 = Math.min(S.zbR0 - 0.10, Math.max(zFaceR, P.zR + 0.05));
+  S.bowF = P.zF - S.zbF0 > 0.15 ? Math.max(0, Math.min(C.bow, (S.zbF1 - S.zbF0) / 1.7)) : 0;
+  S.bowR = S.zbR0 - P.zR > 0.15 ? Math.max(0, Math.min(C.bow, (S.zbR0 - S.zbR1) / 1.7)) : 0;
+
+  // Cristales inclinados hacia dentro: de la cintura (0) al techo (todo)
+  S.lean = THREE.MathUtils.clamp(C.tumblehome, 0, 0.15);
+  S.beltMin = Math.min(P.frontBeltY, P.rearBeltY);
+  S.greenH = Math.max(0.2, P.roofY - S.beltMin);
+
+  S.active = S.rsMax > 1e-3 || S.rcF > 1e-3 || S.rcR > 1e-3 || S.bowF > 0 || S.bowR > 0 || S.lean > 0;
+  return (P._shape = S);
+}
+
+// Todo lo que cambia la deformación, para las cachés de la chapa
+function shapeKey(P){
+  return JSON.stringify([CONFIG.shape, P.halfW, P.roofY, P.bottomY, P.zF, P.zR, P.cabinFrontZ, P.cabinRearZ, P.frontBeltY,
+    P.rearBeltY, P.noseTopY, P.tailTopY, P.frontAxleZ, P.rearAxleZ, P.wheelR, CONFIG.smoothing]);
+}
+
+// La deformación en un punto (en el espacio del coche, antes de la inclinación); modifica p
+function shapeMap(S, p){
+  let ax = Math.abs(p[0]), y = p[1], z = p[2];
+  const sx = p[0] < 0 ? -1 : 1;
+  // Esquina de un cuadrado de lado r -> cuarto de círculo (las rectas u = 0 y v = 0 no se mueven);
+  // lo que sobresale del cuadrado (ópticas, molduras) se desplaza con el borde
+  let uc, vc;
+  // Hombros: el canto entre el costado y el capó, la cintura de las puertas o el maletero
+  if (S.rsMax > 1e-3 && ax > S.H - S.rsMax && y > S.topMin - S.rsMax - 0.02){
+    const rs = lut(S.rsT, S.z0, S.z1, z);
+    if (rs > 1e-3){
+      const top = lut(S.topT, S.z0, S.z1, z);
+      const u = (ax - S.H + rs) / rs, v = (y - top + rs) / rs;
+      if (u > 0 && v > 0){
+        uc = u < 1 ? u : 1; vc = v < 1 ? v : 1;
+        ax = S.H - rs + (uc * Math.sqrt(1 - vc * vc / 2) + u - uc) * rs;
+        y  = top - rs + (vc * Math.sqrt(1 - uc * uc / 2) + v - vc) * rs;
+      }
+    }
+  }
+  // Esquinas vistas desde arriba
+  if (S.rcF > 1e-3 && z > S.zcF && ax > S.H - S.rcF){
+    const r = lut(S.rcFT, S.y0, S.y1, y), zA = lut(S.zAF, S.y0, S.y1, y);
+    const u = (ax - S.H + r) / r, w = (z - zA + r) / r;
+    if (r > 1e-3 && u > 0 && w > 0){
+      uc = u < 1 ? u : 1; vc = w < 1 ? w : 1;
+      ax = S.H - r + (uc * Math.sqrt(1 - vc * vc / 2) + u - uc) * r;
+      z  = zA - r + (vc * Math.sqrt(1 - uc * uc / 2) + w - vc) * r;
+    }
+  }
+  if (S.rcR > 1e-3 && z < S.zcR && ax > S.H - S.rcR){
+    const r = lut(S.rcRT, S.y0, S.y1, y), zA = lut(S.zAR, S.y0, S.y1, y);
+    const u = (ax - S.H + r) / r, w = (zA + r - z) / r;
+    if (r > 1e-3 && u > 0 && w > 0){
+      uc = u < 1 ? u : 1; vc = w < 1 ? w : 1;
+      ax = S.H - r + (uc * Math.sqrt(1 - vc * vc / 2) + u - uc) * r;
+      z  = zA + r - (vc * Math.sqrt(1 - uc * uc / 2) + w - vc) * r;
+    }
+  }
+  // Frontal y zaga abombados: el centro queda donde está y los lados retroceden
+  const q = (ax / S.H) * (ax / S.H);
+  if (S.bowF > 0 && z > S.zbF0) z -= smooth01(z, S.zbF0, S.zbF1) * S.bowF * q;
+  if (S.bowR > 0 && z < S.zbR0) z += smooth01(-z, -S.zbR0, -S.zbR1) * S.bowR * q;
+  // Cristales y techo inclinados hacia dentro por encima de la cintura
+  if (S.lean > 0 && y > S.beltMin){
+    const belt = sillY(S.P, z);
+    if (y > belt){
+      const out = z > S.cF ? z - S.cF : z < S.cR ? S.cR - z : 0;
+      if (out < 0.3) ax *= 1 - S.lean * Math.min(1, (y - belt) / S.greenH) * (1 - smooth01(out, 0, 0.3));
+    }
+  }
+  p[0] = sx * ax; p[1] = y; p[2] = z;
+  return p;
+}
+
+// ¿Puede la deformación mover algo dentro de la caja [min, max]?
+function shapeTouches(S, mn, mx){
+  const axMax = Math.max(Math.abs(mn.x), Math.abs(mx.x));
+  if (S.rsMax > 1e-3 && axMax > S.H - S.rsMax && mx.y > S.topMin - S.rsMax - 0.02) return true;
+  if (S.rcF > 1e-3 && mx.z > S.zcF && axMax > S.H - S.rcF) return true;
+  if (S.rcR > 1e-3 && mn.z < S.zcR && axMax > S.H - S.rcR) return true;
+  if (S.bowF > 0 && mx.z > S.zbF0) return true;
+  if (S.bowR > 0 && mn.z < S.zbR0) return true;
+  if (S.lean > 0 && mx.y > S.beltMin && mx.z > S.cR - 0.3 && mn.z < S.cF + 0.3) return true;
+  return false;
+}
+
+// Malla de los bloques de morro y zaga a partir de su contorno lateral (x = -z, y): una banda que
+// recorre el contorno de lado a lado (1,2 cm por fuera, como el bisel de antes) y dos costados planos
+// en x = ±H hechos con una rejilla ordenada de columnas entre el borde de arriba y el de abajo. Así
+// la deformación de la forma los curva sin pliegues. Devuelve null si un contorno no encaja
+function bodyBlocksGeometry(blocks, P, H){
+  const pos = [], uv = [], index = [];
+  const ok = blocks.every((poly, k) => blockMesh(poly, k === 0 ? P.cabinFrontZ : P.cabinRearZ, k === 0 ? 1 : -1, H, pos, uv, index));
+  if (!ok) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function blockMesh(poly, zCab, e, H, pos, uv, index){
+  let pts = poly.map(v => [-v.x, v.y]);
+  pts = pts.filter((p, i) => { const q = pts[(i + pts.length - 1) % pts.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-6; });
+  const n = pts.length;
+  if (n < 4) return false;
+  const onCab = p => Math.abs(p[0] - zCab) < 1e-4;
+  let iTop = -1, iBot = -1, iTip = 0;
+  for (let i = 0; i < n; i++){
+    if (onCab(pts[i])){
+      if (iTop < 0 || pts[i][1] > pts[iTop][1]) iTop = i;
+      if (iBot < 0 || pts[i][1] < pts[iBot][1]) iBot = i;
+    }
+    if (e * pts[i][0] > e * pts[iTip][0]) iTip = i;
+  }
+  if (iTop < 0 || iTop === iBot || iTip === iTop || iTip === iBot) return false;
+  // Borde de arriba (de la esquina superior junto al habitáculo a la punta) y borde de abajo
+  const nxt = i => (i + 1) % n, prv = i => (i + n - 1) % n;
+  const dir = onCab(pts[nxt(iTop)]) ? -1 : 1;
+  const walk = (i0, d) => {
+    const out = [];
+    for (let i = i0; ; i = d > 0 ? nxt(i) : prv(i)){
+      out.push(pts[i].slice());
+      if (i === iTip) return out;
+      if (out.length > n) return null;
+    }
+  };
+  const top = walk(iTop, dir), bot = walk(iBot, -dir);
+  if (!top || !bot || top.length < 2 || bot.length < 2) return false;
+  // Siempre avanzando hacia la punta, y un parámetro común (avance + longitud) para emparejarlos
+  const param = ch => {
+    const t = [0];
+    for (let i = 1; i < ch.length; i++){
+      if (e * ch[i][0] < e * ch[i - 1][0]) ch[i][0] = ch[i - 1][0];
+      t.push(t[i - 1] + e * (ch[i][0] - ch[i - 1][0]) + 0.25 * Math.hypot(ch[i][0] - ch[i - 1][0], ch[i][1] - ch[i - 1][1]));
+    }
+    const L = t[t.length - 1] || 1;
+    return t.map(v => v / L);
+  };
+  const tT = param(top), tB = param(bot);
+  let ts = [...tT, ...tB].sort((a, b) => a - b);
+  const filled = [];
+  for (const v of ts){
+    const last = filled[filled.length - 1];
+    if (last !== undefined && v - last < 2e-4) continue;
+    if (last !== undefined){ const k = Math.ceil((v - last) / (1 / 70)); for (let j = 1; j < k; j++) filled.push(last + (v - last) * j / k); }
+    filled.push(v);
+  }
+  ts = filled;
+  const sample = (ch, t, v) => {
+    let i = 0;
+    while (i < t.length - 2 && t[i + 1] < v) i++;
+    const f = THREE.MathUtils.clamp((v - t[i]) / Math.max(1e-9, t[i + 1] - t[i]), 0, 1);
+    return [ch[i][0] + (ch[i + 1][0] - ch[i][0]) * f, ch[i][1] + (ch[i + 1][1] - ch[i][1]) * f];
+  };
+  const T = ts.map(v => sample(top, tT, v)), B = ts.map(v => sample(bot, tB, v));
+  T[T.length - 1] = B[B.length - 1] = pts[iTip].slice();
+  const M = ts.length, K = 16;
+  const rung = k => 1 - Math.pow(1 - k / K, 1.8);   // más apretada arriba, donde va el hombro
+  // Contorno de la banda: arriba hasta la punta, abajo de vuelta y el borde del habitáculo
+  const loop = [...T];
+  for (let j = M - 2; j >= 0; j--) loop.push(B[j]);
+  for (let k = 1; k < K; k++) loop.push([B[0][0] + (T[0][0] - B[0][0]) * rung(k), B[0][1] + (T[0][1] - B[0][1]) * rung(k)]);
+  const L = loop.length;
+  let area = 0;
+  for (let i = 0; i < L; i++){ const a = loop[i], c = loop[(i + 1) % L]; area += a[0] * c[1] - c[0] * a[1]; }
+  const sg = area > 0 ? 1 : -1;
+  const segN = [];
+  for (let i = 0; i < L; i++){
+    const a = loop[i], c = loop[(i + 1) % L];
+    const dz = c[0] - a[0], dy = c[1] - a[1], l = Math.hypot(dz, dy) || 1;
+    segN.push([sg * dy / l, -sg * dz / l]);
+  }
+  // Contorno 1,2 cm hacia fuera (la banda y los bordes de los costados coinciden)
+  const grow = loop.map((p, i) => {
+    const a = segN[(i + L - 1) % L], c = segN[i];
+    let nz = a[0] + c[0], ny = a[1] + c[1];
+    const l = Math.hypot(nz, ny);
+    if (l < 1e-6){ nz = c[0]; ny = c[1]; } else { nz /= l; ny /= l; }
+    return [p[0] + 0.012 * nz, p[1] + 0.012 * ny];
+  });
+  const hard = loop.map((p, i) => {
+    const a = segN[(i + L - 1) % L], c = segN[i];
+    return a[0] * c[0] + a[1] * c[1] < Math.cos(50 * Math.PI / 180);
+  });
+
+  // Banda: una fila por punto del contorno (dos en los cantos vivos), columnas apretadas en los lados
+  const tx = [0, 0.3, 0.52, 0.68, 0.79, 0.87, 0.925, 0.96, 0.985, 1];
+  const X = [...tx.slice(1).reverse().map(t => -t * H), 0, ...tx.slice(1).map(t => t * H)];
+  const NX = X.length;
+  const addRow = p => {
+    const base = pos.length / 3;
+    for (const x of X){ pos.push(x, p[1], p[0]); uv.push(p[0], p[1]); }
+    return base;
+  };
+  const rowsIn = [], rowsOut = [];
+  for (let i = 0; i < L; i++){
+    const r = addRow(grow[i]);
+    rowsIn.push(r);
+    rowsOut.push(hard[i] ? addRow(grow[i]) : r);
+  }
+  const tri = (a, b, c, want) => {
+    const ax = pos[a * 3], ay = pos[a * 3 + 1], az = pos[a * 3 + 2];
+    const ux = pos[b * 3] - ax, uy = pos[b * 3 + 1] - ay, uz = pos[b * 3 + 2] - az;
+    const vx = pos[c * 3] - ax, vy = pos[c * 3 + 1] - ay, vz = pos[c * 3 + 2] - az;
+    const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+    const d = cx * want[0] + cy * want[1] + cz * want[2];
+    if (Math.abs(cx) + Math.abs(cy) + Math.abs(cz) < 1e-12) return;
+    if (d >= 0) index.push(a, b, c); else index.push(a, c, b);
+  };
+  for (let i = 0; i < L; i++){
+    const r0 = rowsOut[i], r1 = rowsIn[(i + 1) % L];
+    const want = [0, segN[i][1], segN[i][0]];
+    for (let c = 0; c < NX - 1; c++){
+      tri(r0 + c, r1 + c, r1 + c + 1, want);
+      tri(r0 + c, r1 + c + 1, r0 + c + 1, want);
+    }
+  }
+  // Costados: rejilla de columnas (una por pareja arriba/abajo) con K tramos cada una
+  const gT = grow.slice(0, M), gB = [...grow.slice(M - 1, 2 * M - 1)].reverse();   // gB[j] corresponde a B[j]
+  for (const sx of [-1, 1]){
+    const base = pos.length / 3;
+    for (let j = 0; j < M; j++){
+      for (let k = 0; k <= K; k++){
+        const f = k === 0 ? 0 : k === K ? 1 : rung(k);
+        const z = gB[j][0] + (gT[j][0] - gB[j][0]) * f, y = gB[j][1] + (gT[j][1] - gB[j][1]) * f;
+        // los puntos intermedios de la primera columna son los del borde del habitáculo
+        const q = j === 0 && k > 0 && k < K ? grow[2 * M - 2 + k] : [z, y];
+        pos.push(sx * H, q[1], q[0]); uv.push(q[0], q[1]);
+      }
+    }
+    const want = [sx, 0, 0];
+    for (let j = 0; j < M - 1; j++){
+      for (let k = 0; k < K; k++){
+        const a = base + j * (K + 1) + k, b = a + K + 1;
+        tri(a, b, b + 1, want);
+        tri(a, b + 1, a + 1, want);
+      }
+    }
+  }
+  return true;
+}
+
+// Copia deformada de una geometría (con o sin índices). M lleva de sus coordenadas al espacio del
+// coche. Las aristas se parten mientras la deformación las curve más de 1,5 mm; la decisión depende
+// solo de sus dos extremos, así dos triángulos vecinos la parten igual y no quedan grietas. Las
+// normales giran con la deformación (inversa transpuesta de su jacobiana)
+function deformGeometry(geo, M, S, tol = 0.0015, maxDepth = 7){
+  const names = Object.keys(geo.attributes);
+  const attrs = names.map(n => geo.attributes[n]);
+  const sizes = attrs.map(a => a.itemSize);
+  const iPos = names.indexOf('position'), iNor = names.indexOf('normal');
+  const nSrc = geo.attributes.position.count;
+  const e = M.elements, ei = M.clone().invert().elements;
+  const nm = new THREE.Matrix3().getNormalMatrix(M).elements;
+  const ident = M.equals(new THREE.Matrix4());
+
+  // Banco de vértices: atributos (locales), posición en el coche (G) y deformada (Fd). Los primeros
+  // nSrc son los de la geometría original (los getters deshacen la cuantización de Blender)
+  const data = attrs.map((a, k) => {
+    const sz = sizes[k], arr = new Array(nSrc * sz);
+    for (let i = 0; i < nSrc; i++){
+      arr[i * sz] = a.getX(i);
+      if (sz > 1) arr[i * sz + 1] = a.getY(i);
+      if (sz > 2) arr[i * sz + 2] = a.getZ(i);
+      if (sz > 3) arr[i * sz + 3] = a.getW(i);
+    }
+    return arr;
+  });
+  const G = new Array(nSrc * 3), Fd = new Array(nSrc * 3);
+  const tmp = [0, 0, 0];
+  const field = (x, y, z) => { tmp[0] = x; tmp[1] = y; tmp[2] = z; return shapeMap(S, tmp); };
+  const P0 = data[iPos];
+  for (let i = 0; i < nSrc; i++){
+    const x = P0[i * 3], y = P0[i * 3 + 1], z = P0[i * 3 + 2];
+    const gx = ident ? x : e[0] * x + e[4] * y + e[8] * z + e[12];
+    const gy = ident ? y : e[1] * x + e[5] * y + e[9] * z + e[13];
+    const gz = ident ? z : e[2] * x + e[6] * y + e[10] * z + e[14];
+    G[i * 3] = gx; G[i * 3 + 1] = gy; G[i * 3 + 2] = gz;
+    const f = field(gx, gy, gz);
+    Fd[i * 3] = f[0]; Fd[i * 3 + 1] = f[1]; Fd[i * 3 + 2] = f[2];
+  }
+  let nV = nSrc;
+  const mids = new Map();
+  const mid = (a, b) => {
+    const k = a < b ? a * 4194304 + b : b * 4194304 + a;
+    let m = mids.get(k);
+    if (m !== undefined) return m;
+    m = nV++;
+    for (let n = 0; n < names.length; n++){
+      const sz = sizes[n], d = data[n];
+      for (let c = 0; c < sz; c++) d.push((d[a * sz + c] + d[b * sz + c]) / 2);
+    }
+    const gx = (G[a * 3] + G[b * 3]) / 2, gy = (G[a * 3 + 1] + G[b * 3 + 1]) / 2, gz = (G[a * 3 + 2] + G[b * 3 + 2]) / 2;
+    G.push(gx, gy, gz);
+    const f = field(gx, gy, gz);
+    Fd.push(f[0], f[1], f[2]);
+    mids.set(k, m);
+    return m;
+  };
+  const errCache = new Map();
+  const needSplit = (a, b) => {
+    const k = a < b ? a * 4194304 + b : b * 4194304 + a;
+    let r = errCache.get(k);
+    if (r !== undefined) return r;
+    const ax = G[a * 3], ay = G[a * 3 + 1], az = G[a * 3 + 2], bx = G[b * 3], by = G[b * 3 + 1], bz = G[b * 3 + 2];
+    r = false;
+    if ((bx - ax) * (bx - ax) + (by - ay) * (by - ay) + (bz - az) * (bz - az) > 3.6e-5){
+      for (let q = 1; q <= 3; q++){
+        const t = q * 0.25;
+        const f = field(ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t);
+        const dx = f[0] - (Fd[a * 3] + (Fd[b * 3] - Fd[a * 3]) * t);
+        const dy = f[1] - (Fd[a * 3 + 1] + (Fd[b * 3 + 1] - Fd[a * 3 + 1]) * t);
+        const dz = f[2] - (Fd[a * 3 + 2] + (Fd[b * 3 + 2] - Fd[a * 3 + 2]) * t);
+        if (dx * dx + dy * dy + dz * dz > tol * tol){ r = true; break; }
+      }
+    }
+    errCache.set(k, r);
+    return r;
+  };
+  const mn = new THREE.Vector3(), mx = new THREE.Vector3();
+  const touches = (a, b, c) => {
+    mn.set(Math.min(G[a * 3], G[b * 3], G[c * 3]), Math.min(G[a * 3 + 1], G[b * 3 + 1], G[c * 3 + 1]), Math.min(G[a * 3 + 2], G[b * 3 + 2], G[c * 3 + 2]));
+    mx.set(Math.max(G[a * 3], G[b * 3], G[c * 3]), Math.max(G[a * 3 + 1], G[b * 3 + 1], G[c * 3 + 1]), Math.max(G[a * 3 + 2], G[b * 3 + 2], G[c * 3 + 2]));
+    return shapeTouches(S, mn, mx);
+  };
+  const out = [];
+  const rec = (a, b, c, depth) => {
+    if (depth >= maxDepth || (depth === 0 && !touches(a, b, c))){ out.push(a, b, c); return; }
+    const sAB = needSplit(a, b), sBC = needSplit(b, c), sCA = needSplit(c, a);
+    const n = sAB + sBC + sCA, d = depth + 1;
+    if (n === 0){ out.push(a, b, c); return; }
+    if (n === 3){
+      const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a);
+      rec(a, ab, ca, d); rec(ab, b, bc, d); rec(ca, bc, c, d); rec(ab, bc, ca, d);
+      return;
+    }
+    // Gira el triángulo para que las aristas partidas empiecen en AB
+    if (n === 1){
+      if (sBC) return rec(b, c, a, depth);
+      if (sCA) return rec(c, a, b, depth);
+      const ab = mid(a, b);
+      rec(a, ab, c, d); rec(ab, b, c, d);
+      return;
+    }
+    if (!sCA){ // AB y BC
+      const ab = mid(a, b), bc = mid(b, c);
+      rec(ab, b, bc, d); rec(a, ab, bc, d); rec(a, bc, c, d);
+      return;
+    }
+    if (!sAB) return rec(b, c, a, depth);   // BC y CA -> AB y BC
+    return rec(c, a, b, depth);             // CA y AB -> AB y BC
+  };
+
+  const idx = geo.index ? geo.index.array : null;
+  const total = idx ? idx.length : nSrc;
+  const groups = geo.groups.length ? geo.groups : [{ start: 0, count: total, materialIndex: 0 }];
+  const outGroups = [];
+  for (const gr of groups){
+    const start = out.length, endI = Math.min(total, gr.start + gr.count);
+    for (let i = gr.start; i + 2 < endI; i += 3){
+      if (idx) rec(idx[i], idx[i + 1], idx[i + 2], 0); else rec(i, i + 1, i + 2, 0);
+    }
+    outGroups.push({ start, count: out.length - start, materialIndex: gr.materialIndex });
+  }
+
+  // Posiciones de vuelta a coordenadas locales y normales giradas (solo donde la forma actúa)
+  const res = new THREE.BufferGeometry();
+  const pt = new THREE.Vector3();
+  names.forEach((n, k) => {
+    const arr = new Float32Array(data[k]);
+    if (k === iPos){
+      for (let v = 0; v < nV; v++){
+        const x = Fd[v * 3], y = Fd[v * 3 + 1], z = Fd[v * 3 + 2];
+        arr[v * 3]     = ident ? x : ei[0] * x + ei[4] * y + ei[8] * z + ei[12];
+        arr[v * 3 + 1] = ident ? y : ei[1] * x + ei[5] * y + ei[9] * z + ei[13];
+        arr[v * 3 + 2] = ident ? z : ei[2] * x + ei[6] * y + ei[10] * z + ei[14];
+      }
+    } else if (k === iNor){
+      // La jacobiana se mide 2 mm por dentro (hacia el centro y hacia abajo) y con pasos hacia
+      // dentro: en los cantos, justo en el borde de cada zona, cuenta la curva de la chapa
+      const h = 2e-4;
+      const A = [0, 0, 0], B = [0, 0, 0], Cc = [0, 0, 0];
+      for (let v = 0; v < nV; v++){
+        pt.set(G[v * 3], G[v * 3 + 1], G[v * 3 + 2]);
+        if (!shapeTouches(S, pt, pt)) continue;
+        const lx = arr[v * 3], ly = arr[v * 3 + 1], lz = arr[v * 3 + 2];
+        const nx = nm[0] * lx + nm[3] * ly + nm[6] * lz, ny = nm[1] * lx + nm[4] * ly + nm[7] * lz, nz = nm[2] * lx + nm[5] * ly + nm[8] * lz;
+        const nl = Math.hypot(nx, ny, nz) || 1;
+        const gx = pt.x - 0.002 * (nx / nl + Math.sign(pt.x)), gy = pt.y - 0.002 * (ny / nl + 1), gz = pt.z - 0.002 * (nz / nl + Math.sign(pt.z));
+        let f = field(gx, gy, gz);
+        const f0x = f[0], f0y = f[1], f0z = f[2];
+        const dxs = gx > 0 ? -h : h, dzs = gz > 0 ? -h : h;
+        f = field(gx + dxs, gy, gz); A[0] = (f[0] - f0x) / dxs; A[1] = (f[1] - f0y) / dxs; A[2] = (f[2] - f0z) / dxs;
+        f = field(gx, gy - h, gz);   B[0] = (f0x - f[0]) / h;   B[1] = (f0y - f[1]) / h;   B[2] = (f0z - f[2]) / h;
+        f = field(gx, gy, gz + dzs); Cc[0] = (f[0] - f0x) / dzs; Cc[1] = (f[1] - f0y) / dzs; Cc[2] = (f[2] - f0z) / dzs;
+        // cofactores: (B×C) nx + (C×A) ny + (A×B) nz
+        const bcx = B[1] * Cc[2] - B[2] * Cc[1], bcy = B[2] * Cc[0] - B[0] * Cc[2], bcz = B[0] * Cc[1] - B[1] * Cc[0];
+        const cax = Cc[1] * A[2] - Cc[2] * A[1], cay = Cc[2] * A[0] - Cc[0] * A[2], caz = Cc[0] * A[1] - Cc[1] * A[0];
+        const abx = A[1] * B[2] - A[2] * B[1], aby = A[2] * B[0] - A[0] * B[2], abz = A[0] * B[1] - A[1] * B[0];
+        const mx2 = bcx * nx + cax * ny + abx * nz, my2 = bcy * nx + cay * ny + aby * nz, mz2 = bcz * nx + caz * ny + abz * nz;
+        // de vuelta a local: traspuesta de la parte 3x3 de M
+        const ox = e[0] * mx2 + e[1] * my2 + e[2] * mz2, oy = e[4] * mx2 + e[5] * my2 + e[6] * mz2, oz = e[8] * mx2 + e[9] * my2 + e[10] * mz2;
+        const l = Math.hypot(ox, oy, oz) || 1;
+        arr[v * 3] = ox / l; arr[v * 3 + 1] = oy / l; arr[v * 3 + 2] = oz / l;
+      }
+    }
+    res.setAttribute(n, new THREE.BufferAttribute(arr, sizes[k]));
+  });
+  res.setIndex(nV > 65535 ? new THREE.Uint32BufferAttribute(out, 1) : new THREE.Uint16BufferAttribute(out, 1));
+  if (geo.groups.length) outGroups.forEach(gr => res.addGroup(gr.start, gr.count, gr.materialIndex));
+  return res;
+}
+
+// Aplica la forma a los grupos ya construidos de un coche (antes de inclinarlos). Las piezas
+// pequeñas que apenas cambian de forma solo se desplazan; las marcadas con userData.rigidShape
+// (retrovisores) y todo el interior se mueven enteras
+function applyShapeField(parts, P){
+  const S = shapeParams(P);
+  if (!S.active) return;
+  const box = new THREE.Box3(), v = new THREE.Vector3(), d = new THREE.Vector3(), p = [0, 0, 0];
+  const disp = (x, y, z) => { p[0] = x; p[1] = y; p[2] = z; shapeMap(S, p); return d.set(p[0] - x, p[1] - y, p[2] - z); };
+  const moveRigid = o => {
+    box.setFromObject(o);
+    if (box.isEmpty() || !shapeTouches(S, box.min, box.max)) return;
+    box.getCenter(v);
+    disp(v.x, v.y, v.z);
+    if (d.lengthSq() < 1e-8) return;
+    if (o.parent){
+      const m3 = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().copy(o.parent.matrixWorld).invert());
+      d.applyMatrix3(m3);
+    }
+    o.position.add(d);
+    o.updateMatrixWorld(true);
+  };
+  const corners = new Array(8).fill(0).map(() => new THREE.Vector3());
+  const deformMesh = m => {
+    const geo = m.geometry;
+    if (!geo || !geo.attributes.position || m.userData.shaped) return;
+    if (!geo.boundingBox) geo.computeBoundingBox();
+    box.copy(geo.boundingBox).applyMatrix4(m.matrixWorld);
+    if (!shapeTouches(S, box.min, box.max)) return;
+    // ¿Basta con moverla?
+    const bb = geo.boundingBox;
+    let k = 0;
+    for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) corners[k++].set(x, y, z).applyMatrix4(m.matrixWorld);
+    box.getCenter(v);
+    const d0 = disp(v.x, v.y, v.z).clone();
+    let varMax = 0, dMax = d0.length();
+    for (const c of corners){
+      disp(c.x, c.y, c.z);
+      dMax = Math.max(dMax, d.length());
+      varMax = Math.max(varMax, d.distanceTo(d0));
+    }
+    if (dMax < 2e-4) return;
+    const span = box.getSize(v).length();
+    if (varMax < 0.002 && span < 0.6){
+      if (m.parent){
+        const m3 = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().copy(m.parent.matrixWorld).invert());
+        d0.applyMatrix3(m3);
+      }
+      m.position.add(d0);
+      m.updateMatrixWorld(true);
+      return;
+    }
+    m.geometry = deformGeometry(geo, m.matrixWorld, S);
+    m.userData.sharedGeometry = false;
+  };
+  for (const grp of parts){
+    grp.updateMatrixWorld(true);
+    const rigidOnly = grp.name === 'Interior';
+    const visit = o => {
+      if (o !== grp && (rigidOnly || o.userData.rigidShape)){ moveRigid(o); return; }
+      if (o.isMesh) deformMesh(o);
+      for (const c of o.children) visit(c);
+    };
+    visit(grp);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2287,8 +2942,11 @@ function sideRuns(P, y, hh){
       }
     }
   }
+  const S = shapeParams(P);
   const zEnd = e => {
-    let z = faceZ(P, y, e) - e * 0.03;
+    // Las líneas laterales acaban donde empieza a redondearse la esquina
+    const rc = lut(e > 0 ? S.rcFT : S.rcRT, S.y0, S.y1, y);
+    let z = faceZ(P, y, e) - e * (0.03 + 0.8 * rc);
     for (const b of blocked) if (b.e === e) z = e > 0 ? Math.min(z, faceZ(P, y, e) - b.w) : Math.max(z, faceZ(P, y, e) + b.w);
     return z;
   };
@@ -2743,13 +3401,14 @@ function csgPart(brush, mats, side = 0){
 // accesorios no repite las booleanas. Mientras se arrastra un deslizador (fastPreview) no se recorta
 // lo que no esté ya guardado: se ve la versión superficial y al soltar se recorta
 const CARVE_CACHE = new Map();
+const BODY_CACHE = new Map();
 let fastPreview = false;
 
-function carveBody(geo, P, pts){
+function carveBody(geo, P, pts, sKey){
   const lamps = [cornerLampSpec(P, 1), cornerLampSpec(P, -1)].filter(Boolean);
   const intakes = [intakeSpec(P, 1), intakeSpec(P, -1)].filter(Boolean);
   if (!CSG || !(lamps.length || intakes.length)) return null;
-  const key = JSON.stringify([pts.map(v => [+v.x.toFixed(5), +v.y.toFixed(5)]), P.width, CONFIG.headlight.housing,
+  const key = JSON.stringify([pts.map(v => [+v.x.toFixed(5), +v.y.toFixed(5)]), P.width, sKey, CONFIG.headlight.housing,
     lamps.map(sp => [sp.key, sp.def.W, sp.d, sp.yTop, sp.pockets]), intakes.map(sp => [sp.key, sp.pockets])]);
   let hit = CARVE_CACHE.get(key);
   if (!hit){
@@ -2785,6 +3444,14 @@ function carveBodyNow(geo, P, lamps, intakes){
         all.geometry.dispose(); pocket.geometry.dispose();
         all = merged;
       } else all = pocket;
+    }
+    // Los huecos siguen la misma forma que la chapa
+    const S = shapeParams(P);
+    if (all && S.active){
+      const shaped = new CSG.Brush(deformGeometry(all.geometry, new THREE.Matrix4(), S), all.material);
+      shaped.updateMatrixWorld();
+      all.geometry.dispose();
+      all = shaped;
     }
     return all;
   };
@@ -2938,26 +3605,40 @@ function buildBody(P){
   const pts = blocks.flat();
   const depth = P.width - 0.06;
 
-  const geo = new THREE.ExtrudeGeometry(blocks.map(b => new THREE.Shape(b)), {
-    depth,
-    bevelEnabled: true,
-    bevelSize: 0.012, bevelThickness: 0.02, bevelSegments: 2,
-    curveSegments: 24,
-  });
+  // Malla ordenada de los dos bloques ya con la forma aplicada (se guarda: al cambiar algo que no
+  // es la chapa no se rehace); si un contorno raro no la admite, extrusión clásica
+  const S = shapeParams(P);
+  const sKey = shapeKey(P);
+  const bodyKey = JSON.stringify([pts.map(v => [+v.x.toFixed(5), +v.y.toFixed(5)]), P.width, sKey]);
+  const cachedBody = BODY_CACHE.get(bodyKey);
+  let geo = cachedBody ? cachedBody.clone() : bodyBlocksGeometry(blocks, P, depth / 2 + 0.02);
+  if (geo && !cachedBody){
+    if (S.active) geo = deformGeometry(geo, new THREE.Matrix4(), S);
+    BODY_CACHE.set(bodyKey, geo.clone());
+    if (BODY_CACHE.size > 6) BODY_CACHE.delete(BODY_CACHE.keys().next().value);
+  }
+  if (!geo){
+    geo = new THREE.ExtrudeGeometry(blocks.map(b => new THREE.Shape(b)), {
+      depth,
+      bevelEnabled: true,
+      bevelSize: 0.012, bevelThickness: 0.02, bevelSegments: 2,
+      curveSegments: 24,
+    });
+    geo.applyMatrix4(new THREE.Matrix4().set(
+       0, 0, 1, 0,
+       0, 1, 0, 0,
+      -1, 0, 0, 0,
+       0, 0, 0, 1
+    ));
+    geo.translate(-depth / 2, 0, 0);
+    geo.computeVertexNormals();
+    if (S.active) geo = deformGeometry(geo, new THREE.Matrix4(), S);
+  }
 
-  geo.applyMatrix4(new THREE.Matrix4().set(
-     0, 0, 1, 0,
-     0, 1, 0, 0,
-    -1, 0, 0, 0,
-     0, 0, 0, 1
-  ));
-  geo.translate(-depth / 2, 0, 0);
-  geo.computeVertexNormals();
-
-  // Huecos de las ópticas envolventes en las esquinas
+  // Huecos de las ópticas envolventes en las esquinas (con la forma ya aplicada a los huecos)
   let carved = null;
   try {
-    carved = carveBody(geo, P, pts);
+    carved = carveBody(geo, P, pts, sKey);
   } catch (err){
     console.warn('No se pudo recortar la carrocería', err);
   }
@@ -2968,18 +3649,21 @@ function buildBody(P){
   mesh.name = 'BodyShell';
   mesh.castShadow = mesh.receiveShadow = true;
   mesh.userData.selectable = true;
+  mesh.userData.shaped = true;
   g.add(mesh);
 
   if (carved){
     carved.walls.forEach(([wg, m], i) => {
       const walls = new THREE.Mesh(wg, m);
       walls.receiveShadow = true;
+      walls.userData.shaped = true;
       addMesh(g, `LampPocket_${i}`, walls);
     });
     for (const L of carved.lenses){
       if (!L.geo) continue;
       const lens = new THREE.Mesh(L.geo, L.e > 0 ? MAT.lampLens : MAT.tailLens);
       lens.renderOrder = 2;
+      lens.userData.shaped = true;
       g.add(lens);
       lens.name = L.e > 0 ? 'HeadLens' : 'TailLens';
     }
@@ -3989,7 +4673,8 @@ function buildSideDetails(P){
   for (const s of [-1, 1]){
     // Escala -1 en x: la pieza del lado derecho sirve en espejo para el izquierdo
     const mz = cF - 0.20;
-    addPart(g, `Mirror_${s}`, `mirror_${CONFIG.embeds.mirror.type}`, [s * xSide, sillY(P, mz) + 0.04, mz], { scale: [s, 1, 1] });
+    const mirror = addPart(g, `Mirror_${s}`, `mirror_${CONFIG.embeds.mirror.type}`, [s * xSide, sillY(P, mz) + 0.04, mz], { scale: [s, 1, 1] });
+    if (mirror) mirror.userData.rigidShape = true;   // sigue al hombro sin deformarse
     if (!handlePart) continue;
     for (const [name, z] of [[`HandleF_${s}`, cF - 0.65 + Hd.offsetZ], [`HandleR_${s}`, cR + 0.85 + Hd.offsetZ]]){
       addPart(g, name, handlePart, [s * xSide, sillY(P, z) - 0.12 + Hd.offsetY, z], { scale: [s, 1, 1], materials: handleTrim });
@@ -4524,7 +5209,9 @@ function buildCar(){
 
   clearContactShadows();
   addContactShadow(P);
-  for (const part of [buildBody(P), buildCabin(P), buildFrontDetails(P), buildRearDetails(P), buildSideDetails(P), buildAccessories(P), buildInterior(P)]){
+  const parts = [buildBody(P), buildCabin(P), buildFrontDetails(P), buildRearDetails(P), buildSideDetails(P), buildAccessories(P), buildInterior(P)];
+  applyShapeField(parts, P);
+  for (const part of parts){
     part.rotation.x = CONFIG.stance.rake || 0;   // inclinación: la carrocería gira, las ruedas no
     car.add(part);
   }
@@ -4582,11 +5269,14 @@ function buildShowroomCar(presetKey, posX){
   carGrp.name = 'ShowroomCar_' + presetKey;
   carGrp.userData.presetKey = presetKey;
 
-  for (const part of [buildBody(P), buildCabin(P), buildFrontDetails(P), buildRearDetails(P), buildSideDetails(P), buildAccessories(P)]){
+  const parts = [buildBody(P), buildCabin(P), buildFrontDetails(P), buildRearDetails(P), buildSideDetails(P), buildAccessories(P)];
+  const interior = buildInterior(P);
+  applyShapeField([...parts, interior], P);
+  for (const part of parts){
     part.rotation.x = CONFIG.stance.rake || 0;
     carGrp.add(part);
   }
-  carGrp.add(buildInterior(P));
+  carGrp.add(interior);
 
   const wg = buildWheels(P);
   carGrp.add(wg.group);
@@ -5051,6 +5741,11 @@ function bindUI(){
   addSlider('stanceWidth', 'vStW', () => CONFIG.stance.width, v => CONFIG.stance.width = v, v => v.toFixed(2), () => markDirty());
   addSlider('stanceHeight', 'vStH', () => CONFIG.stance.rideHeight, v => CONFIG.stance.rideHeight = v, v => v.toFixed(3), () => markDirty());
   addSlider('stanceRake', 'vStR', () => CONFIG.stance.rake, v => CONFIG.stance.rake = v, v => v.toFixed(3), () => markDirty());
+  // Forma de la carrocería
+  for (const [id, out, key, dec] of [['shapeCorner', 'vShC', 'corner', 2], ['shapeCornerRear', 'vShCR', 'cornerRear', 2],
+    ['shapeShoulder', 'vShS', 'shoulder', 3], ['shapeBow', 'vShB', 'bow', 3], ['shapeTumble', 'vShT', 'tumblehome', 3]]){
+    addSlider(id, out, () => CONFIG.shape[key], v => CONFIG.shape[key] = v, v => v.toFixed(dec), () => markDirty());
+  }
   addSlider('roofMetalX', 'vRMX', () => CONFIG.glass.roofMetalX, v => CONFIG.glass.roofMetalX = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofMetalZ', 'vRMZ', () => CONFIG.glass.roofMetalZ, v => CONFIG.glass.roofMetalZ = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofMetalY', 'vRMY', () => CONFIG.glass.roofMetalY, v => CONFIG.glass.roofMetalY = v, v => v.toFixed(3), () => markDirty());
@@ -5264,6 +5959,7 @@ function randomize(){
   CONFIG.smoothing = rnd(0.25, 0.6);
   CONFIG.pillars = JSON.parse(JSON.stringify(DEFAULTS.pillars));
   Object.assign(CONFIG.glass, { roofCurve: rnd(0.0, 0.12), roofYOffset: 0, roofZOffset: 0, roofGap: DEFAULTS.glass.roofGap, opacity: DEFAULTS.glass.opacity });
+  CONFIG.shape = { corner: rnd(0.12, 0.34), cornerRear: rnd(0.10, 0.32), shoulder: rnd(0.035, 0.10), bow: rnd(0.03, 0.10), tumblehome: rnd(0.02, 0.08) };
 
   // Se repite el muestreo hasta que las proporciones cumplan REALISM
   for (let attempt = 0; attempt < 300; attempt++){
@@ -5439,6 +6135,7 @@ function randomizeWild(){
     CONFIG.wheelRadius     = monster ? rnd(1.25, 1.5) : rnd(1.0, 1.3);
     CONFIG.wheelSpacer     = monster ? rnd(0.08, 0.18) : rnd(0.02, 0.12);
     CONFIG.smoothing       = rnd(0, 1);
+    CONFIG.shape = { corner: rnd(0, 0.40), cornerRear: rnd(0, 0.40), shoulder: rnd(0, 0.14), bow: rnd(0, 0.15), tumblehome: rnd(0, 0.12) };
     CONFIG.zones = {
       frontBumper: { ...DEFAULTS.zones.frontBumper, height: rnd(0.35, 1.1), curve: rnd(0.1, 2.5), length: rnd(0.5, 2.0) },
       hood:        { ...DEFAULTS.zones.hood, height: rnd(0.75, 1.15), length: rnd(0.7, 1.6), overhang: rnd(0.5, 1.6), noseHeight: rnd(0.45, 1.05), curve: rnd(-0.4, 0.6) },
