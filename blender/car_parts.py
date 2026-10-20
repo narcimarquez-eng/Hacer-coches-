@@ -22,7 +22,7 @@ ROLES = {   # color solo para la vista previa en Blender
     'alu': (0.72, 0.74, 0.77), 'glass': (0.1, 0.12, 0.14), 'light': (1.0, 1.0, 0.95),
     'dark': (0.03, 0.03, 0.03), 'leather': (0.15, 0.1, 0.07), 'red': (0.8, 0.05, 0.02),
     'trim': (0.9, 0.9, 0.92), 'plate': (1.0, 1.0, 1.0), 'mirror': (0.8, 0.82, 0.85),
-    'plastic': (0.06, 0.06, 0.07),
+    'plastic': (0.06, 0.06, 0.07), 'lens': (0.85, 0.9, 0.95),
 }
 
 
@@ -569,6 +569,32 @@ def new_parts():
     mesh(r, 'frame', frame, 'dark', 0.004)
 
 
+# --------------------------------------------------------------------------- módulos de faro (origen en el frente, mirando a +z)
+def lamp_parts():
+    r = part('lamp_projector')      # proyector LED, radio de diseño 0.04
+    cup = lathe([(0.040, 0.0), (0.026, -0.034), (0.023, -0.036), (0.037, 0.0)], 40)
+    mesh(r, 'cup', cup, 'chrome', 0.0, 3, 30)
+    mesh(r, 'barrel', cyl(0.024, 0.045, 'z', (0, 0, -0.056), 32), 'dark', 0.003)
+    mesh(r, 'glow', cyl(0.019, 0.004, 'z', (0, 0, -0.026), 32), 'light')
+    dome = lathe([(0.0, -0.004), (0.010, -0.006), (0.018, -0.011), (0.022, -0.018), (0.022, -0.022), (0.0, -0.022)], 32)
+    mesh(r, 'lens', dome, 'lens', 0.0, 3, 60)
+    mesh(r, 'ring', lathe([(0.0315 + 0.0022 * math.cos(a), -0.010 + 0.0022 * math.sin(a))
+                           for a in [2 * math.pi * k / 10 for k in range(10)]], 40), 'light', 0.0, 3, 80)
+
+    r = part('lamp_reflector')      # parábola clásica con bombilla, radio de diseño 0.06
+    outer = [(0.060 * t, -0.05 * (1 - t * t)) for t in [k / 8 for k in range(9)]]
+    inner = [(rr, z - 0.003) for rr, z in reversed(outer)]
+    mesh(r, 'bowl', lathe(outer[1:] + inner[:-1], 48), 'chrome', 0.0, 3, 50)
+    mesh(r, 'bulb', sphere(0.011, (0, 0, -0.030), 16), 'light')
+    mesh(r, 'cap', cyl(0.007, 0.006, 'z', (0, 0, -0.017), 16), 'chrome')
+    mesh(r, 'socket', cyl(0.016, 0.03, 'z', (0, 0, -0.06), 20), 'dark')
+
+    r = part('lamp_led_cell')       # celda LED rectangular 0.05 x 0.022
+    mesh(r, 'frame', box(0.050, 0.022, 0.030, (0, 0, -0.016)), 'dark', 0.003)
+    mesh(r, 'face', box(0.040, 0.013, 0.004, (0, 0, -0.002)), 'light', 0.0015)
+    mesh(r, 'lip', box(0.052, 0.003, 0.004, (0, 0.0105, -0.002)), 'chrome')
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -581,6 +607,7 @@ def main():
     exhausts()
     small_parts()
     new_parts()
+    lamp_parts()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
