@@ -22,7 +22,7 @@ ROLES = {   # color solo para la vista previa en Blender
     'alu': (0.72, 0.74, 0.77), 'glass': (0.1, 0.12, 0.14), 'light': (1.0, 1.0, 0.95),
     'dark': (0.03, 0.03, 0.03), 'leather': (0.15, 0.1, 0.07), 'red': (0.8, 0.05, 0.02),
     'trim': (0.9, 0.9, 0.92), 'plate': (1.0, 1.0, 1.0), 'mirror': (0.8, 0.82, 0.85),
-    'plastic': (0.06, 0.06, 0.07), 'lens': (0.85, 0.9, 0.95),
+    'plastic': (0.06, 0.06, 0.07), 'lens': (0.85, 0.9, 0.95), 'rim': (0.75, 0.76, 0.8),
 }
 
 
@@ -595,6 +595,48 @@ def lamp_parts():
     mesh(r, 'lip', box(0.052, 0.003, 0.004, (0, 0.0105, -0.002)), 'chrome')
 
 
+# --------------------------------------------------------------------------- tapacubos (radio de diseño 0.20, origen detrás, cara hacia +z)
+def ring_of(geo_fn, n, radius, z=0.0, phase=0.0):
+    """n copias de una pieza repartidas en círculo (la pieza se crea apuntando a +x)."""
+    out = Geo()
+    for k in range(n):
+        a = phase + 2 * math.pi * k / n
+        out.merge(geo_fn().move(radius, 0, z).rot('z', a))
+    return out
+
+
+def hubcaps():
+    r = part('hubcap_aero')         # disco aerodinámico de eléctrico
+    disc = lathe([(0.0, 0.0), (0.20, 0.0), (0.20, 0.006), (0.185, 0.014), (0.12, 0.022), (0.0, 0.024)], 64, closed=False)
+    mesh(r, 'disc', disc, 'rim', 0.0, 3, 30)
+    mesh(r, 'slots', ring_of(lambda: box(0.075, 0.016, 0.006), 5, 0.14, 0.0185), 'dark', 0.003)
+    mesh(r, 'cap', cyl(0.036, 0.008, 'z', (0, 0, 0.026), 32), 'chrome', 0.002)
+
+    r = part('hubcap_classic')      # tapacubos cromado con ranuras
+    dome = lathe([(0.0, 0.0), (0.20, 0.0), (0.20, 0.008), (0.17, 0.016), (0.09, 0.030), (0.0, 0.034)], 64, closed=False)
+    mesh(r, 'dome', dome, 'alu', 0.0, 3, 30)
+    mesh(r, 'slots', ring_of(lambda: box(0.05, 0.012, 0.006).rot('y', -0.18), 10, 0.15, 0.0135), 'dark', 0.002)
+    mesh(r, 'badge', cyl(0.032, 0.006, 'z', (0, 0, 0.035), 32), 'dark', 0.002)
+    mesh(r, 'badge_ring', lathe([(0.034 + 0.003 * math.cos(a), 0.035 + 0.003 * math.sin(a)) for a in [2 * math.pi * k / 8 for k in range(8)]], 32), 'chrome')
+
+    r = part('hubcap_turbine')      # turbina de álabes
+    mesh(r, 'base', cyl(0.195, 0.006, 'z', (0, 0, 0.003), 64), 'dark')
+    mesh(r, 'blades', ring_of(lambda: box(0.13, 0.010, 0.022).rot('x', 0.45), 14, 0.125, 0.014), 'rim', 0.002)
+    mesh(r, 'rim_ring', lathe([(0.19, 0.0), (0.20, 0.0), (0.20, 0.016), (0.19, 0.016)], 64), 'chrome', 0.0, 3, 30)
+    mesh(r, 'cone', lathe([(0.0, 0.0), (0.06, 0.0), (0.05, 0.02), (0.02, 0.034), (0.0, 0.036)], 32, closed=False), 'chrome')
+
+    r = part('hubcap_moon')         # disco cromado liso (retro)
+    mesh(r, 'disc', lathe([(0.0, 0.0), (0.20, 0.0), (0.20, 0.006), (0.15, 0.030), (0.07, 0.042), (0.0, 0.045)], 64, closed=False), 'alu', 0.0, 3, 30)
+    mesh(r, 'badge', cyl(0.02, 0.004, 'z', (0, 0, 0.046), 24), 'dark')
+
+    r = part('hubcap_steelie')      # llanta de chapa con tapa central
+    disc = lathe([(0.0, 0.004), (0.10, 0.004), (0.12, 0.012), (0.16, 0.012), (0.18, 0.004), (0.20, 0.004), (0.20, 0.0), (0.0, 0.0)], 64)
+    mesh(r, 'disc', disc, 'steel', 0.0, 3, 30)
+    mesh(r, 'holes', ring_of(lambda: cyl(0.016, 0.004, 'z', (0, 0, 0.0125), 20), 8, 0.14, 0.0, math.pi / 8), 'dark')
+    mesh(r, 'cap', lathe([(0.0, 0.0), (0.05, 0.0), (0.048, 0.012), (0.03, 0.024), (0.0, 0.027)], 32, closed=False).move(0, 0, 0.004), 'chrome')
+    mesh(r, 'nuts', ring_of(lambda: cyl(0.009, 0.014, 'z', (0, 0, 0.011), 6), 5, 0.075), 'chrome')
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -608,6 +650,7 @@ def main():
     small_parts()
     new_parts()
     lamp_parts()
+    hubcaps()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
