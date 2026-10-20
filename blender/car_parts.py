@@ -637,6 +637,96 @@ def hubcaps():
     mesh(r, 'nuts', ring_of(lambda: cyl(0.009, 0.014, 'z', (0, 0, 0.011), 6), 5, 0.075), 'chrome')
 
 
+# --------------------------------------------------------------------------- aerodinámica agresiva
+def naca(chord, t, n=16):
+    """Perfil alar NACA simétrico [(z, y)] con el borde de ataque en +z."""
+    up, low = [], []
+    for k in range(n):
+        x = (1 - math.cos(math.pi * k / (n - 1))) / 2
+        yt = 5 * t * chord * (0.2969 * math.sqrt(x) - 0.126 * x - 0.3516 * x ** 2 + 0.2843 * x ** 3 - 0.1036 * x ** 4)
+        z = chord / 2 - x * chord
+        up.append((z, yt))
+        low.append((z, -yt))
+    return up + low[-2:0:-1]
+
+
+def pair(fn, x):
+    return Geo().merge(fn(-x), fn(x))
+
+
+def aggressive_aero():
+    # Alerones: origen en el borde trasero del maletero, +z hacia delante (como spoiler_wing)
+    r = part('spoiler_swan')        # cuello de cisne GT: el ala cuelga de dos brazos que la sujetan por arriba
+    y0, z0, a = 0.46, -0.05, 0.14
+    mesh(r, 'wing', prism(naca(0.36, 0.12), 1.62).rot('x', a).move(0, y0, z0), 'carbon', 0.004)
+    mesh(r, 'gurney', box(1.62, 0.03, 0.006, (0, y0 + 0.18 * math.sin(a) + 0.015, z0 - 0.18 * math.cos(a))), 'carbon')
+    plate = [(0.16, -0.05), (0.06, -0.07), (-0.21, -0.05), (-0.23, 0.07), (-0.06, 0.10), (0.13, 0.04)]
+    mesh(r, 'endplates', pair(lambda x: prism(plate, 0.012, 'zy', (x, y0, z0)), 0.815), 'carbon', 0.003)
+    neck = lambda x: sweep(rounded_poly([(x, 0.0, 0.18), (x, 0.34, 0.20), (x, 0.58, 0.10), (x, 0.58, -0.02), (x, 0.49, -0.05)], 0.07, 6),
+                           rrect(0.06, 0.022, 0.008), up=(1.0, 0.0, 0.0))
+    mesh(r, 'necks', pair(neck, 0.42), 'carbon', 0.003)
+    mesh(r, 'feet', pair(lambda x: box(0.07, 0.012, 0.12, (x, 0.006, 0.18)), 0.42), 'dark', 0.003)
+
+    r = part('spoiler_biplane')     # doble plano (time attack)
+    mesh(r, 'main', prism(naca(0.32, 0.12), 1.56).rot('x', 0.10).move(0, 0.30, 0.02), 'carbon', 0.004)
+    mesh(r, 'flap', prism(naca(0.18, 0.10), 1.56).rot('x', 0.42).move(0, 0.38, -0.16), 'carbon', 0.003)
+    plate = [(0.17, -0.05), (0.17, 0.04), (-0.06, 0.13), (-0.25, 0.13), (-0.25, -0.03), (-0.04, -0.07)]
+    mesh(r, 'endplates', pair(lambda x: prism(plate, 0.012, 'zy', (x, 0.30, 0.0)), 0.785), 'carbon', 0.003)
+    mesh(r, 'uprights', pair(lambda x: prism([(0.08, 0.0), (-0.05, 0.0), (0.0, 0.30), (0.10, 0.30)], 0.025, 'zy', (x, 0, 0)), 0.40), 'carbon', 0.006)
+
+    r = part('spoiler_tall')        # ala alta de rally sobre patas largas
+    mesh(r, 'wing', prism(naca(0.28, 0.12), 1.48).rot('x', 0.08).move(0, 0.62, -0.02), 'carbon', 0.004)
+    plate = [(0.15, -0.045), (0.15, 0.035), (-0.13, 0.06), (-0.15, -0.045)]
+    mesh(r, 'endplates', pair(lambda x: prism(plate, 0.010, 'zy', (x, 0.62, -0.02)), 0.745), 'carbon', 0.003)
+    mesh(r, 'legs', pair(lambda x: prism([(0.12, 0.0), (0.0, 0.0), (-0.06, 0.62), (0.06, 0.62)], 0.022, 'zy', (x, 0, 0)), 0.38), 'carbon', 0.005)
+
+    r = part('spoiler_whale')       # cola de ballena con borde de goma
+    tray = [(0.42, 0.0), (-0.04, 0.0), (-0.12, 0.07), (-0.14, 0.11), (0.28, 0.10)]
+    mesh(r, 'tray', prism(tray, 1.50), 'paint', 0.02, 4)
+    mesh(r, 'lip', box(1.52, 0.03, 0.03, (0, 0.105, -0.13)), 'rubber', 0.01)
+    mesh(r, 'grille', box(0.90, 0.006, 0.18, (0, 0.102, 0.12)), 'dark', 0.003)
+
+    r = part('spoiler_active')      # pala activa elevada con pistones
+    blade = prism([(0.14, 0.0), (-0.12, 0.012), (-0.12, 0.030), (0.14, 0.018)], 1.56).rot('x', 0.22).move(0, 0.24, -0.04)
+    mesh(r, 'blade', blade, 'paint', 0.006)
+    mesh(r, 'rods', pair(lambda x: cyl(0.014, 0.22, 'y', (x, 0.12, 0.0)).rot('x', 0.18, (x, 0.0, 0.0)), 0.40), 'alu', 0.002)
+    mesh(r, 'sleeves', pair(lambda x: cyl(0.024, 0.09, 'y', (x, 0.045, 0.0)).rot('x', 0.18, (x, 0.0, 0.0)), 0.40), 'dark', 0.003)
+    mesh(r, 'bases', pair(lambda x: box(0.08, 0.012, 0.08, (x, 0.006, 0.0)), 0.40), 'dark', 0.003)
+
+    # Difusores traseros: origen en la cara a ras del bajo, modelados hacia +z (la app los gira)
+    r = part('diffuser_race')       # competición: aletas altas y luz de lluvia
+    mesh(r, 'plate', box(1.70, 0.02, 0.44, (0, 0, -0.08)), 'carbon', 0.005)
+    mesh(r, 'fins', Geo().merge(*[prism([(0.14, 0.0), (-0.30, 0.0), (-0.30, 0.02), (0.14, 0.17)], 0.012, 'zy', (k * 0.26, 0.01, 0)) for k in range(-3, 4)]), 'carbon', 0.002)
+    mesh(r, 'rain_housing', box(0.12, 0.07, 0.03, (0, 0.12, 0.125)), 'dark', 0.004)
+    mesh(r, 'rain_light', box(0.10, 0.05, 0.01, (0, 0.12, 0.142)), 'light', 0.002)
+
+    r = part('diffuser_twin')       # doble túnel
+    mesh(r, 'plate', box(1.60, 0.02, 0.36, (0, 0, -0.06)), 'carbon', 0.005)
+    roofs = pair(lambda x: box(0.46, 0.012, 0.38).rot('x', -0.32).move(x, 0.075, -0.06), 0.45)
+    mesh(r, 'tunnels', roofs, 'carbon', 0.003)
+    mesh(r, 'walls', Geo().merge(*[prism([(0.12, 0.0), (-0.24, 0.0), (-0.24, 0.02), (0.12, 0.15)], 0.014, 'zy', (x, 0.01, 0)) for x in (-0.68, -0.22, 0.22, 0.68)]), 'carbon', 0.002)
+
+    r = part('diffuser_blade')      # difusor con lama superior entre placas laterales
+    mesh(r, 'plate', box(1.56, 0.02, 0.34, (0, 0, -0.06)), 'carbon', 0.005)
+    mesh(r, 'fins', Geo().merge(*[prism([(0.10, 0.0), (-0.22, 0.0), (-0.22, 0.02), (0.10, 0.11)], 0.012, 'zy', (k * 0.30, 0.01, 0)) for k in range(-2, 3)]), 'carbon', 0.002)
+    mesh(r, 'blade', prism(naca(0.16, 0.10), 1.56).rot('x', -0.15).move(0, 0.21, 0.05), 'carbon', 0.003)
+    mesh(r, 'sides', pair(lambda x: prism([(0.15, 0.0), (-0.24, 0.0), (-0.24, 0.03), (0.15, 0.27)], 0.014, 'zy', (x, 0.0, 0)), 0.79), 'carbon', 0.003)
+
+    # Delante: splitter de competición (origen a ras del bajo, +z hacia fuera) y canards dobles
+    r = part('splitter_race')
+    mesh(r, 'blade', prism([(-0.88, 0.0), (0.88, 0.0), (0.96, -0.18), (-0.96, -0.18)], 0.02, 'xz', (0, 0, 0.20)), 'carbon', 0.004)
+    mesh(r, 'winglets', pair(lambda x: prism([(0.20, 0.0), (0.02, 0.0), (0.02, 0.10), (0.12, 0.10)], 0.012, 'zy', (x, 0.0, 0)), 0.95), 'carbon', 0.003)
+    mesh(r, 'fins', Geo().merge(*[prism([(0.18, 0.0), (-0.02, 0.0), (-0.02, 0.05), (0.06, 0.05)], 0.012, 'zy', (x, 0.01, 0)) for x in (-0.6, -0.2, 0.2, 0.6)]), 'carbon', 0.002)
+
+    r = part('canards_double')
+    blades = Geo()
+    for s_ in (-1, 1):
+        for dy, k in ((0.07, 1.0), (0.17, 0.85)):
+            blade = prism([(0.0, 0.0), (s_ * 0.20 * k, 0.0), (s_ * 0.15 * k, 0.12 * k), (0.0, 0.12 * k)], 0.012, 'xz')
+            blades.merge(blade.rot('y', -s_ * 0.35).rot('z', s_ * 0.3).move(s_ * 0.80, dy, 0.0))
+    mesh(r, 'blades', blades, 'carbon', 0.003)
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -651,6 +741,7 @@ def main():
     new_parts()
     lamp_parts()
     hubcaps()
+    aggressive_aero()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
