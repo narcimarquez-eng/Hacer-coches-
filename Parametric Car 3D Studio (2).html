@@ -321,6 +321,15 @@
   </div>
 
   <div class="grp">
+    <label>Líneas de carrocería</label>
+    <select id="beltLine"></select>
+    <select id="creaseLine" style="margin-top:8px"></select>
+    <select id="hoodLines" style="margin-top:8px"></select>
+    <select id="rockerLine" style="margin-top:8px"></select>
+    <div class="sl"><span>Profundidad de las líneas</span><input type="range" id="linesDepth" min="0" max="2" step="0.05"><b id="vLnD"></b></div>
+  </div>
+
+  <div class="grp">
     <label>Zona seleccionada (clic en el coche)</label>
     <select id="zoneSelect">
       <option value="frontBumper">Paragolpes delantero</option>
@@ -789,6 +798,8 @@ const CONFIG = {
   // Forma: radio de las esquinas vistas desde arriba, hombros, abombado del frontal y la zaga, y
   // caída hacia dentro de los cristales laterales
   shape: { corner: 0.26, cornerRear: 0.22, shoulder: 0.07, bow: 0.07, tumblehome: 0.05 },
+  // Líneas de carrocería: cintura, pliegue medio, nervios del capó y estribo (pliegues de la chapa)
+  bodyLines: { belt: 'sharp', crease: 'none', hood: 'two', rocker: 'scoop', depth: 1.0 },
 
   // Ejes independientes del centro sin alterar el tamaño de la cabina
   frontAxleOffset: 0.0,
@@ -996,6 +1007,7 @@ const FIVE_CARS = {
     model: 'sedan',
     config: {
       shape: { corner: 0.32, cornerRear: 0.28, shoulder: 0.08, bow: 0.09, tumblehome: 0.06 },
+      bodyLines: { belt: 'sharp', crease: 'none', hood: 'two', rocker: 'scoop', depth: 1.0 },
       paint: { color: '#e5e7eb', type: 'pearl', metalness: 0.55, roughness: 0.16, clearcoat: 1.0 },
       roofPaint: { color: '#0b0d10', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -1023,6 +1035,7 @@ const FIVE_CARS = {
     model: 'suv',
     config: {
       shape: { corner: 0.18, cornerRear: 0.14, shoulder: 0.05, bow: 0.05, tumblehome: 0.04 },
+      bodyLines: { belt: 'step', crease: 'ridge', hood: 'four', rocker: 'straight', depth: 1.0 },
       paint: { color: '#6b7280', type: 'matte', metalness: 0.20, roughness: 0.80, clearcoat: 0.0 },
       roofPaint: { color: '#111827', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -1053,6 +1066,7 @@ const FIVE_CARS = {
     model: 'compact',
     config: {
       shape: { corner: 0.30, cornerRear: 0.26, shoulder: 0.09, bow: 0.06, tumblehome: 0.05 },
+      bodyLines: { belt: 'sharp', crease: 'none', hood: 'dome', rocker: 'none', depth: 0.9 },
       paint: { color: '#facc15', type: 'solid', metalness: 0.10, roughness: 0.35, clearcoat: 1.0 },
       roofPaint: { color: '#f8fafc', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -1081,6 +1095,7 @@ const FIVE_CARS = {
     model: 'coupe',
     config: {
       shape: { corner: 0.28, cornerRear: 0.24, shoulder: 0.09, bow: 0.08, tumblehome: 0.07 },
+      bodyLines: { belt: 'step', crease: 'rising', hood: 'four', rocker: 'scoop', depth: 1.3 },
       paint: { color: '#1e3a8a', type: 'metallic', metalness: 0.85, roughness: 0.18, clearcoat: 1.0 },
       roofPaint: { color: '#1e3a8a', syncBodyColor: true },
       frontAxleOffset: 0.0,
@@ -1108,6 +1123,7 @@ const FIVE_CARS = {
     model: 'limousine',
     config: {
       shape: { corner: 0.30, cornerRear: 0.18, shoulder: 0.06, bow: 0.08, tumblehome: 0.04 },
+      bodyLines: { belt: 'sharp', crease: 'groove', hood: 'none', rocker: 'scoop', depth: 1.0 },
       paint: { color: '#86efac', type: 'solid', metalness: 0.10, roughness: 0.40, clearcoat: 0.6 },
       roofPaint: { color: '#f8fafc', syncBodyColor: false },
       frontAxleOffset: 0.0,
@@ -2414,14 +2430,80 @@ function shapeParams(P){
   S.beltMin = Math.min(P.frontBeltY, P.rearBeltY);
   S.greenH = Math.max(0.2, P.roofY - S.beltMin);
 
-  S.active = S.rsMax > 1e-3 || S.rcF > 1e-3 || S.rcR > 1e-3 || S.bowF > 0 || S.bowR > 0 || S.lean > 0;
+  // Líneas de carrocería: pliegues de la chapa del costado (cintura, pliegue medio y estribo) y
+  // nervios del capó. Cada línea del costado es una tabla en z de su altura y de su fuerza
+  const BL = Object.assign({ belt: 'none', crease: 'none', hood: 'none', rocker: 'none', depth: 1 }, CONFIG.bodyLines || {});
+  const depthK = THREE.MathUtils.clamp(BL.depth, 0, 2.5);
+  const beltMinY = Math.min(P.frontBeltY, P.rearBeltY);
+  S.sideLines = [];
+  S.lz0 = P.zR + 0.25 + S.rcR; S.lz1 = P.zF - 0.25 - S.rcF;
+  S.ly0 = Infinity; S.ly1 = -Infinity;
+  const fadeEnds = z => smooth01(z, S.lz0, S.lz0 + 0.3) * (1 - smooth01(z, S.lz1 - 0.3, S.lz1));
+  const sideLine = (kind, amp, w, yAtZ, weight) => {
+    if (!amp || depthK <= 0 || S.lz1 - S.lz0 < 0.8) return;
+    const c = new Float32Array(NZ + 1), a = new Float32Array(NZ + 1);
+    for (let i = 0; i <= NZ; i++) c[i] = yAtZ(zAt(i));
+    // Sin quiebros donde cambia de bloque
+    const c0 = c.slice();
+    for (let i = 0; i <= NZ; i++){
+      let sum = 0, n = 0;
+      for (let k = -7; k <= 7; k++){ const j = i + k; if (j >= 0 && j <= NZ){ sum += c0[j]; n++; } }
+      c[i] = sum / n;
+    }
+    for (let i = 0; i <= NZ; i++){
+      const z = zAt(i);
+      // Nunca dentro del redondeo del hombro
+      c[i] = Math.min(c[i], S.topT[i] - S.rsT[i] - 0.035);
+      a[i] = amp * depthK * weight(z, c[i]);
+      if (a[i] !== 0){ S.ly0 = Math.min(S.ly0, kind === 'scoop' ? b - 0.05 : c[i] - w - 0.01); S.ly1 = Math.max(S.ly1, c[i] + (kind === 'step' ? 0.23 : w + 0.01)); }
+    }
+    S.sideLines.push({ kind, c, a, w });
+  };
+  // Lejos de los pasos de rueda (la línea se desvanece donde pasaría por encima de un arco)
+  const archFade = (z, y, clear) => {
+    const ya = archYAt(P, arches, z);
+    return ya === null ? 1 : smooth01(y - ya, clear * 0.5, clear * 1.6);
+  };
+  const beltRef = z => sillY(P, THREE.MathUtils.clamp(z, cR, cF)) - 0.075 - rs0;
+  if (BL.belt === 'sharp') sideLine('ridge', 0.008, 0.045, beltRef, (z, y) => fadeEnds(z) * archFade(z, y, 0.07));
+  if (BL.belt === 'step')  sideLine('step', 0.009, 0.02, beltRef, (z, y) => fadeEnds(z) * archFade(z, y, 0.08));
+  const tRear = z => THREE.MathUtils.clamp((P.zF - z) / Math.max(0.5, P.zF - P.zR), 0, 1);
+  const creaseY = z => b + (beltMinY - b) * 0.52 + (BL.crease === 'rising' ? 0.12 : 0.03) * tRear(z);
+  if (BL.crease === 'ridge' || BL.crease === 'rising') sideLine('ridge', 0.0065, 0.04, creaseY, (z, y) => fadeEnds(z) * archFade(z, y, 0.06));
+  if (BL.crease === 'groove') sideLine('ridge', -0.0065, 0.04, creaseY, (z, y) => fadeEnds(z) * archFade(z, y, 0.06));
+  // Estribo: solo entre los dos pasos de rueda, subiendo hacia la rueda trasera
+  if (BL.rocker !== 'none' && arches.front && arches.rear){
+    const zA0 = arches.rear.a1, zA1 = arches.front.a0;
+    const rise = BL.rocker === 'scoop' ? 0.08 : 0;
+    const rockY = z => b + 0.11 + rise * THREE.MathUtils.clamp((zA1 - z) / Math.max(0.3, zA1 - zA0), 0, 1);
+    const between = z => smooth01(z, zA0 + 0.02, zA0 + 0.16) * (1 - smooth01(z, zA1 - 0.16, zA1 - 0.02));
+    if (zA1 - zA0 > 0.6){
+      if (BL.rocker === 'scoop') sideLine('scoop', 0.013, 0.03, rockY, z => between(z));
+      else sideLine('ridge', -0.0065, 0.035, rockY, z => between(z));
+    }
+  }
+  // Nervios del capó: se acercan un poco entre sí hacia el morro
+  S.hoodRidges = [];
+  S.dome = 0;
+  S.hz0 = cF + 0.08;
+  S.hz1 = Math.min(lut(S.zAF, S.y0, S.y1, capF) - S.rcF * 0.5, P.hoodFrontZ + 0.05) - 0.04;
+  if (BL.hood !== 'none' && depthK > 0 && S.hz1 - S.hz0 > 0.3){
+    const span = H - rs0;
+    if (BL.hood === 'two') S.hoodRidges.push([0.45 * span, 0.012 * depthK, 0.08]);
+    if (BL.hood === 'four') S.hoodRidges.push([0.24 * span, 0.009 * depthK, 0.06], [0.56 * span, 0.011 * depthK, 0.07]);
+    if (BL.hood === 'dome'){ S.dome = 0.028 * depthK; S.domeW = 0.55 * span; }
+  }
+  S.hoodOn = S.hoodRidges.length > 0 || S.dome > 0;
+  S.hoodYMin = Math.min(P.frontBeltY, P.noseTopY) - 0.08;
+
+  S.active = S.rsMax > 1e-3 || S.rcF > 1e-3 || S.rcR > 1e-3 || S.bowF > 0 || S.bowR > 0 || S.lean > 0 || S.sideLines.length > 0 || S.hoodOn;
   return (P._shape = S);
 }
 
 // Todo lo que cambia la deformación, para las cachés de la chapa
 function shapeKey(P){
-  return JSON.stringify([CONFIG.shape, P.halfW, P.roofY, P.bottomY, P.zF, P.zR, P.cabinFrontZ, P.cabinRearZ, P.frontBeltY,
-    P.rearBeltY, P.noseTopY, P.tailTopY, P.frontAxleZ, P.rearAxleZ, P.wheelR, CONFIG.smoothing]);
+  return JSON.stringify([CONFIG.shape, CONFIG.bodyLines, P.halfW, P.roofY, P.bottomY, P.zF, P.zR, P.cabinFrontZ, P.cabinRearZ, P.frontBeltY,
+    P.rearBeltY, P.noseTopY, P.tailTopY, P.frontAxleZ, P.rearAxleZ, P.wheelR, P.lift, CONFIG.smoothing]);
 }
 
 // La deformación en un punto (en el espacio del coche, antes de la inclinación); modifica p
@@ -2431,6 +2513,35 @@ function shapeMap(S, p){
   // Esquina de un cuadrado de lado r -> cuarto de círculo (las rectas u = 0 y v = 0 no se mueven);
   // lo que sobresale del cuadrado (ópticas, molduras) se desplaza con el borde
   let uc, vc;
+  // Líneas de carrocería del costado: pliegues hacia fuera o hacia dentro de la chapa
+  if (S.sideLines.length && ax > S.H - 0.12 && z > S.lz0 && z < S.lz1 && y > S.ly0 && y < S.ly1){
+    let dx = 0;
+    for (const L of S.sideLines){
+      const a = lut(L.a, S.z0, S.z1, z);
+      if (a === 0) continue;
+      // Perfiles suaves (sin picos): la luz marca la línea sin rayas en la malla
+      const d = y - lut(L.c, S.z0, S.z1, z);
+      if (L.kind === 'ridge'){ const t = d / L.w; if (t > -1 && t < 1) dx += a * (1 - t * t) * (1 - t * t); }
+      else if (L.kind === 'step') dx += a * (d < 0 ? smooth01(d, -L.w, 0) : 1 - smooth01(d, 0, 0.22));
+      else if (d < 0) dx -= a * smooth01(-d, 0, L.w);   // scoop: la parte de abajo queda metida
+    }
+    ax += dx * smooth01(ax, S.H - 0.12, S.H - 0.05);
+  }
+  // Nervios del capó
+  if (S.hoodOn && z > S.hz0 && z < S.hz1 && y > S.hoodYMin && ax < S.H){
+    const top = lut(S.topT, S.z0, S.z1, z);
+    if (y > top - 0.06){
+      const t = (z - S.hz0) / (S.hz1 - S.hz0);
+      const k = smooth01(z, S.hz0, S.hz0 + 0.15) * (1 - smooth01(z, S.hz1 - 0.15, S.hz1)) * smooth01(y, top - 0.06, top - 0.012);
+      let dy = 0;
+      for (const [xr, amp, w] of S.hoodRidges){
+        const u = (ax - xr * (1 - 0.12 * t)) / w;
+        if (u > -1 && u < 1) dy += amp * (1 - u * u) * (1 - u * u);
+      }
+      if (S.dome) dy += S.dome * Math.max(0, 1 - (ax / S.domeW) * (ax / S.domeW));
+      y += k * dy;
+    }
+  }
   // Hombros: el canto entre el costado y el capó, la cintura de las puertas o el maletero
   if (S.rsMax > 1e-3 && ax > S.H - S.rsMax && y > S.topMin - S.rsMax - 0.02){
     const rs = lut(S.rsT, S.z0, S.z1, z);
@@ -2488,7 +2599,33 @@ function shapeTouches(S, mn, mx){
   if (S.bowF > 0 && mx.z > S.zbF0) return true;
   if (S.bowR > 0 && mn.z < S.zbR0) return true;
   if (S.lean > 0 && mx.y > S.beltMin && mx.z > S.cR - 0.3 && mn.z < S.cF + 0.3) return true;
+  if (S.sideLines.length && axMax > S.H - 0.12 && mx.z > S.lz0 && mn.z < S.lz1 && mx.y > S.ly0 && mn.y < S.ly1) return true;
+  if (S.hoodOn && mx.z > S.hz0 && mn.z < S.hz1 && mx.y > S.hoodYMin && Math.min(Math.abs(mn.x), Math.abs(mx.x)) * (mn.x * mx.x > 0 ? 1 : 0) < S.H) return true;
   return false;
+}
+
+// Reparto de las K filas de una columna del costado entre yLo y yHi (fracciones de 0 a 1): más
+// apretadas junto al hombro y alrededor de cada línea de carrocería, así las filas siguen las
+// líneas y los pliegues salen limpios sin tener que partir triángulos
+function rowFractions(S, z, yLo, yHi, K){
+  const n = 96, F = new Float64Array(n + 1);
+  const lines = S ? S.sideLines.filter(L => lut(L.a, S.z0, S.z1, z) !== 0).map(L => [lut(L.c, S.z0, S.z1, z), Math.max(0.02, L.w * 1.3)]) : [];
+  const dens = y => {
+    let r = 1 + 1.5 * Math.exp(-((yHi - y) / 0.09) * ((yHi - y) / 0.09));
+    for (const [c, w] of lines){ const t = (y - c) / w; r += 5 * Math.exp(-t * t); }
+    return r;
+  };
+  let prev = dens(yLo);
+  for (let i = 1; i <= n; i++){ const d = dens(yLo + (yHi - yLo) * i / n); F[i] = F[i - 1] + (prev + d) / 2; prev = d; }
+  const tot = F[n] || 1, out = [0];
+  let i = 0;
+  for (let k = 1; k < K; k++){
+    const target = tot * k / K;
+    while (i < n - 1 && F[i + 1] < target) i++;
+    out.push((i + (target - F[i]) / Math.max(1e-12, F[i + 1] - F[i])) / n);
+  }
+  out.push(1);
+  return out;
 }
 
 // Malla de los bloques de morro y zaga a partir de su contorno lateral (x = -z, y): una banda que
@@ -2497,7 +2634,8 @@ function shapeTouches(S, mn, mx){
 // la deformación de la forma los curva sin pliegues. Devuelve null si un contorno no encaja
 function bodyBlocksGeometry(blocks, P, H){
   const pos = [], uv = [], index = [];
-  const ok = blocks.every((poly, k) => blockMesh(poly, k === 0 ? P.cabinFrontZ : P.cabinRearZ, k === 0 ? 1 : -1, H, pos, uv, index));
+  const S = shapeParams(P);
+  const ok = blocks.every((poly, k) => blockMesh(poly, k === 0 ? P.cabinFrontZ : P.cabinRearZ, k === 0 ? 1 : -1, H, pos, uv, index, S));
   if (!ok) return null;
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -2507,7 +2645,7 @@ function bodyBlocksGeometry(blocks, P, H){
   return geo;
 }
 
-function blockMesh(poly, zCab, e, H, pos, uv, index){
+function blockMesh(poly, zCab, e, H, pos, uv, index, S){
   let pts = poly.map(v => [-v.x, v.y]);
   pts = pts.filter((p, i) => { const q = pts[(i + pts.length - 1) % pts.length]; return Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-6; });
   const n = pts.length;
@@ -2563,12 +2701,12 @@ function blockMesh(poly, zCab, e, H, pos, uv, index){
   };
   const T = ts.map(v => sample(top, tT, v)), B = ts.map(v => sample(bot, tB, v));
   T[T.length - 1] = B[B.length - 1] = pts[iTip].slice();
-  const M = ts.length, K = 16;
-  const rung = k => 1 - Math.pow(1 - k / K, 1.8);   // más apretada arriba, donde va el hombro
+  const M = ts.length, K = 36;
   // Contorno de la banda: arriba hasta la punta, abajo de vuelta y el borde del habitáculo
+  const fr0 = rowFractions(S, zCab, B[0][1], T[0][1], K);
   const loop = [...T];
   for (let j = M - 2; j >= 0; j--) loop.push(B[j]);
-  for (let k = 1; k < K; k++) loop.push([B[0][0] + (T[0][0] - B[0][0]) * rung(k), B[0][1] + (T[0][1] - B[0][1]) * rung(k)]);
+  for (let k = 1; k < K; k++) loop.push([B[0][0] + (T[0][0] - B[0][0]) * fr0[k], B[0][1] + (T[0][1] - B[0][1]) * fr0[k]]);
   const L = loop.length;
   let area = 0;
   for (let i = 0; i < L; i++){ const a = loop[i], c = loop[(i + 1) % L]; area += a[0] * c[1] - c[0] * a[1]; }
@@ -2629,8 +2767,9 @@ function blockMesh(poly, zCab, e, H, pos, uv, index){
   for (const sx of [-1, 1]){
     const base = pos.length / 3;
     for (let j = 0; j < M; j++){
+      const fr = rowFractions(S, (gB[j][0] + gT[j][0]) / 2, gB[j][1], gT[j][1], K);
       for (let k = 0; k <= K; k++){
-        const f = k === 0 ? 0 : k === K ? 1 : rung(k);
+        const f = fr[k];
         const z = gB[j][0] + (gT[j][0] - gB[j][0]) * f, y = gB[j][1] + (gT[j][1] - gB[j][1]) * f;
         // los puntos intermedios de la primera columna son los del borde del habitáculo
         const q = j === 0 && k > 0 && k < K ? grow[2 * M - 2 + k] : [z, y];
@@ -2647,6 +2786,71 @@ function blockMesh(poly, zCab, e, H, pos, uv, index){
     }
   }
   return true;
+}
+
+// Panel de puerta: una losa entre xIn y xOut (centrada en x = 0; luego se coloca a cada lado) con
+// una rejilla ordenada de columnas entre el borde de abajo (bottom: [[z, y]] con z creciente) y la
+// cintura. Así la forma y las líneas de carrocería la curvan igual que a la chapa
+function doorSlabGeometry(P, xIn, xOut, bottom){
+  if (!bottom || bottom.length < 2) return null;
+  const z0 = bottom[0][0], z1 = bottom[bottom.length - 1][0];
+  if (z1 - z0 < 0.2) return null;
+  const zs = [];
+  for (const [z] of bottom){
+    const last = zs[zs.length - 1];
+    if (last !== undefined && z - last < 1e-4) continue;
+    if (last !== undefined){ const k = Math.ceil((z - last) / 0.03); for (let j = 1; j < k; j++) zs.push(last + (z - last) * j / k); }
+    zs.push(z);
+  }
+  const botAt = z => {
+    let i = 0;
+    while (i < bottom.length - 2 && bottom[i + 1][0] < z) i++;
+    const a = bottom[i], c = bottom[i + 1];
+    return a[1] + (c[1] - a[1]) * THREE.MathUtils.clamp((z - a[0]) / Math.max(1e-9, c[0] - a[0]), 0, 1);
+  };
+  const K = 30, S = shapeParams(P);
+  const M = zs.length;
+  const pos = [], uv = [], index = [];
+  const vtx = (x, y, z) => { pos.push(x, y, z); uv.push(z, y); return pos.length / 3 - 1; };
+  const tri = (a, b, c, want) => {
+    const ux = pos[b * 3] - pos[a * 3], uy = pos[b * 3 + 1] - pos[a * 3 + 1], uz = pos[b * 3 + 2] - pos[a * 3 + 2];
+    const vx = pos[c * 3] - pos[a * 3], vy = pos[c * 3 + 1] - pos[a * 3 + 1], vz = pos[c * 3 + 2] - pos[a * 3 + 2];
+    const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+    if (Math.abs(cx) + Math.abs(cy) + Math.abs(cz) < 1e-12) return;
+    if (cx * want[0] + cy * want[1] + cz * want[2] >= 0) index.push(a, b, c); else index.push(a, c, b);
+  };
+  const quad = (a, b, c, d, want) => { tri(a, b, c, want); tri(a, c, d, want); };
+  const Y = zs.map(z => { const lo = botAt(z), hi = sillY(P, z), fr = rowFractions(S, z, lo, hi, K); return fr.map(f => lo + (hi - lo) * f); });
+  // Caras exterior e interior
+  for (const [x, sx] of [[xOut, 1], [xIn, -1]]){
+    const base = pos.length / 3;
+    for (let j = 0; j < M; j++) for (let k = 0; k <= K; k++) vtx(x, Y[j][k], zs[j]);
+    for (let j = 0; j < M - 1; j++) for (let k = 0; k < K; k++){
+      const a = base + j * (K + 1) + k, b = a + K + 1;
+      quad(a, b, b + 1, a + 1, [sx, 0, 0]);
+    }
+  }
+  // Cantos de arriba y de abajo, y extremos delantero y trasero
+  for (const [k, wy] of [[K, 1], [0, -1]]){
+    const base = pos.length / 3;
+    for (let j = 0; j < M; j++){ vtx(xOut, Y[j][k], zs[j]); vtx(xIn, Y[j][k], zs[j]); }
+    for (let j = 0; j < M - 1; j++){
+      const a = base + j * 2, b = a + 2;
+      const dz = zs[j + 1] - zs[j], dy = Y[j + 1][k] - Y[j][k], l = Math.hypot(dz, dy) || 1;
+      quad(a, b, b + 1, a + 1, [0, wy * dz / l, -wy * dy / l]);
+    }
+  }
+  for (const [j, wz] of [[M - 1, 1], [0, -1]]){
+    const base = pos.length / 3;
+    for (let k = 0; k <= K; k++){ vtx(xOut, Y[j][k], zs[j]); vtx(xIn, Y[j][k], zs[j]); }
+    for (let k = 0; k < K; k++){ const a = base + k * 2, b = a + 2; quad(a, b, b + 1, a + 1, [0, 0, wz]); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
+  return geo;
 }
 
 // Copia deformada de una geometría (con o sin índices). M lleva de sus coordenadas al espacio del
@@ -3615,7 +3819,7 @@ function buildBody(P){
   if (geo && !cachedBody){
     if (S.active) geo = deformGeometry(geo, new THREE.Matrix4(), S);
     BODY_CACHE.set(bodyKey, geo.clone());
-    if (BODY_CACHE.size > 6) BODY_CACHE.delete(BODY_CACHE.keys().next().value);
+    if (BODY_CACHE.size > 12) BODY_CACHE.delete(BODY_CACHE.keys().next().value);
   }
   if (!geo){
     geo = new THREE.ExtrudeGeometry(blocks.map(b => new THREE.Shape(b)), {
@@ -3681,14 +3885,26 @@ function buildBody(P){
     ...doorBottom,
     new THREE.Vector2(cF, P.frontBeltY), new THREE.Vector2(cR, P.rearBeltY),
   ]);
-  const doorGeo = new THREE.ExtrudeGeometry(doorShape, { depth: doorThick, bevelEnabled: false })
-    .rotateY(-Math.PI / 2).translate(doorThick / 2, 0, 0);
+  const doorGeo = doorSlabGeometry(P, -doorThick / 2, doorThick / 2, doorBottom.map(v => [v.x, v.y]))
+    || new THREE.ExtrudeGeometry(doorShape, { depth: doorThick, bevelEnabled: false }).rotateY(-Math.PI / 2).translate(doorThick / 2, 0, 0);
   const beltLen  = Math.hypot(cF - cR, P.frontBeltY - P.rearBeltY);
   const beltTilt = -Math.atan2(P.frontBeltY - P.rearBeltY, cF - cR);
   const capIn = P.cabinW - 0.02, capOut = depth / 2;   // de la base del cristal a la chapa exterior
+  // Las dos puertas ya con la forma y las líneas aplicadas (se guardan como la chapa)
+  const doorKey = bodyKey + '|puertas';
+  let doorGeos = BODY_CACHE.get(doorKey);
+  if (!doorGeos){
+    doorGeos = [-1, 1].map(s => {
+      const gd = doorGeo.clone().translate(s * sideX, 0, 0);
+      return S.active ? deformGeometry(gd, new THREE.Matrix4(), S) : gd;
+    });
+    BODY_CACHE.set(doorKey, doorGeos.map(d => d.clone()));
+    if (BODY_CACHE.size > 12) BODY_CACHE.delete(BODY_CACHE.keys().next().value);
+  } else doorGeos = doorGeos.map(d => d.clone());
+  doorGeo.dispose();
   for (const s of [-1, 1]){
-    const door = new THREE.Mesh(doorGeo, MAT.paint);
-    door.position.x = s * sideX;
+    const door = new THREE.Mesh(doorGeos[s > 0 ? 1 : 0], MAT.paint);
+    door.userData.shaped = true;
     addMesh(g, `DoorOuter_${s}`, door);
     // Remate de cintura: cierra el hueco entre la chapa de la puerta y la base del cristal
     addBox(g, `BeltCap_${s}`, [capOut - capIn, 0.02, beltLen], [s * (capIn + capOut) / 2, (P.frontBeltY + P.rearBeltY) / 2, (cF + cR) / 2], MAT.paint, [beltTilt, 0, 0]);
@@ -4275,6 +4491,10 @@ const OPTIONS = {
   plates: [['eu', 'Con matrículas'], ['none', 'Sin matrículas']],
   paintReal: [['metallic', ''], ['metallic', ''], ['pearl', ''], ['solid', '']],
   roofType: [['panoramic', 'Techo con cristal panorámico (ajustable)'], ['solid', 'Techo completo de chapa (sin cristal)']],
+  beltLine: [['none', 'Sin línea de cintura'], ['sharp', 'Línea de cintura afilada (de faros a pilotos)'], ['step', 'Hombro marcado: escalón bajo las ventanas']],
+  creaseLine: [['none', 'Sin línea de pliegue'], ['ridge', 'Pliegue en relieve a media puerta'], ['groove', 'Pliegue hundido a media puerta'], ['rising', 'Pliegue que sube hacia atrás']],
+  hoodLines: [['none', 'Capó liso'], ['two', 'Dos nervios en el capó'], ['four', 'Cuatro nervios en el capó'], ['dome', 'Capó abombado en el centro']],
+  rockerLine: [['none', 'Sin línea de estribo'], ['scoop', 'Estribo esculpido que sube hacia la rueda trasera'], ['straight', 'Línea de estribo recta']],
   wheelCover: [['none', 'Sin tapacubos (llanta a la vista)'], ['aero', 'Tapacubos aerodinámico'], ['classic', 'Tapacubos clásico cromado'],
                ['turbine', 'Tapacubos turbina'], ['moon', 'Disco cromado retro'], ['steelie', 'Llanta de chapa con tapa']],
   archTrim: [['none', 'Sin moldura en los pasos de rueda'], ['black', 'Moldura negra (todoterreno)'], ['chrome', 'Filo cromado'],
@@ -5746,6 +5966,12 @@ function bindUI(){
     ['shapeShoulder', 'vShS', 'shoulder', 3], ['shapeBow', 'vShB', 'bow', 3], ['shapeTumble', 'vShT', 'tumblehome', 3]]){
     addSlider(id, out, () => CONFIG.shape[key], v => CONFIG.shape[key] = v, v => v.toFixed(dec), () => markDirty());
   }
+  // Líneas de carrocería
+  addSelect('beltLine', OPTIONS.beltLine, () => CONFIG.bodyLines.belt, v => CONFIG.bodyLines.belt = v);
+  addSelect('creaseLine', OPTIONS.creaseLine, () => CONFIG.bodyLines.crease, v => CONFIG.bodyLines.crease = v);
+  addSelect('hoodLines', OPTIONS.hoodLines, () => CONFIG.bodyLines.hood, v => CONFIG.bodyLines.hood = v);
+  addSelect('rockerLine', OPTIONS.rockerLine, () => CONFIG.bodyLines.rocker, v => CONFIG.bodyLines.rocker = v);
+  addSlider('linesDepth', 'vLnD', () => CONFIG.bodyLines.depth, v => CONFIG.bodyLines.depth = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofMetalX', 'vRMX', () => CONFIG.glass.roofMetalX, v => CONFIG.glass.roofMetalX = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofMetalZ', 'vRMZ', () => CONFIG.glass.roofMetalZ, v => CONFIG.glass.roofMetalZ = v, v => v.toFixed(2), () => markDirty());
   addSlider('roofMetalY', 'vRMY', () => CONFIG.glass.roofMetalY, v => CONFIG.glass.roofMetalY = v, v => v.toFixed(3), () => markDirty());
@@ -5960,6 +6186,11 @@ function randomize(){
   CONFIG.pillars = JSON.parse(JSON.stringify(DEFAULTS.pillars));
   Object.assign(CONFIG.glass, { roofCurve: rnd(0.0, 0.12), roofYOffset: 0, roofZOffset: 0, roofGap: DEFAULTS.glass.roofGap, opacity: DEFAULTS.glass.opacity });
   CONFIG.shape = { corner: rnd(0.12, 0.34), cornerRear: rnd(0.10, 0.32), shoulder: rnd(0.035, 0.10), bow: rnd(0.03, 0.10), tumblehome: rnd(0.02, 0.08) };
+  {
+    const pick = list => list[Math.floor(Math.random() * list.length)];
+    CONFIG.bodyLines = { belt: pick(['sharp', 'sharp', 'step', 'none']), crease: pick(['none', 'none', 'ridge', 'groove', 'rising']),
+      hood: pick(['two', 'two', 'four', 'dome', 'none']), rocker: pick(['scoop', 'scoop', 'straight', 'none']), depth: rnd(0.7, 1.3) };
+  }
 
   // Se repite el muestreo hasta que las proporciones cumplan REALISM
   for (let attempt = 0; attempt < 300; attempt++){
@@ -6136,6 +6367,8 @@ function randomizeWild(){
     CONFIG.wheelSpacer     = monster ? rnd(0.08, 0.18) : rnd(0.02, 0.12);
     CONFIG.smoothing       = rnd(0, 1);
     CONFIG.shape = { corner: rnd(0, 0.40), cornerRear: rnd(0, 0.40), shoulder: rnd(0, 0.14), bow: rnd(0, 0.15), tumblehome: rnd(0, 0.12) };
+    CONFIG.bodyLines = { belt: pickV(['sharp', 'step', 'step', 'none']), crease: pickV(['ridge', 'groove', 'rising', 'rising', 'none']),
+      hood: pickV(['two', 'four', 'dome', 'four']), rocker: pickV(['scoop', 'scoop', 'straight', 'none']), depth: rnd(1.0, 2.0) };
     CONFIG.zones = {
       frontBumper: { ...DEFAULTS.zones.frontBumper, height: rnd(0.35, 1.1), curve: rnd(0.1, 2.5), length: rnd(0.5, 2.0) },
       hood:        { ...DEFAULTS.zones.hood, height: rnd(0.75, 1.15), length: rnd(0.7, 1.6), overhang: rnd(0.5, 1.6), noseHeight: rnd(0.45, 1.05), curve: rnd(-0.4, 0.6) },
