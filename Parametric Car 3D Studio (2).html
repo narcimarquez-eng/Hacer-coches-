@@ -487,6 +487,11 @@
       <option value="brushedBlack">Textura metal cepillado</option>
       <option value="none">Sin textura</option>
     </select>
+    <select id="grillePattern" style="margin-top:8px"></select>
+    <select id="grilleFrame" style="margin-top:8px"></select>
+    <select id="grilleFinish" style="margin-top:8px"></select>
+    <div class="sl"><span>Relieve</span><input type="range" id="grilleRelief" min="0" max="1" step="0.05"><b id="vGrRel"></b></div>
+    <div class="sl"><span>Tamaño del dibujo</span><input type="range" id="grilleScale" min="0.5" max="2" step="0.05"><b id="vGrSc"></b></div>
     <div class="sl"><span>Ancho parrilla</span><input type="range" id="grilleWidth" min="0.4" max="1.4" step="0.01"><b id="vGrW"></b></div>
     <div class="sl"><span>Alto parrilla</span><input type="range" id="grilleHeight" min="0.4" max="2.2" step="0.01"><b id="vGrH"></b></div>
     <div class="sl"><span>Altura parrilla</span><input type="range" id="grilleOffsetY" min="-0.20" max="0.20" step="0.01"><b id="vGrY"></b></div>
@@ -925,7 +930,8 @@ const CONFIG = {
   chrome: { color: '#eaeaf0', roughness: 0.08 },
 
   embeds: {
-    grille:    { type: 'slats',     protrudeZ: 0.003, texture: 'honeycomb', width: 1.0, height: 1.0, offsetY: 0.0, emblem: true },
+    grille:    { type: 'slats',     protrudeZ: 0.003, texture: 'honeycomb', width: 1.0, height: 1.0, offsetY: 0.0, emblem: true,
+                 pattern: 'auto', frame: 'chrome', finish: 'auto', relief: 0.5, patternScale: 1.0 },
     headlight: { protrudeZ: 0.0 },
     taillight: { protrudeZ: 0.0 },
     handle:    { type: 'chrome',    offsetY: 0.0, offsetZ: 0.0 },
@@ -1119,7 +1125,7 @@ const FIVE_CARS = {
       tire: { treadStyle: 'sport', bumpScale: 0.08 },
       headlight: { type: 'projector', housing: 'chrome', emissiveIntensity: 3.5 },
       taillight: { type: 'round', emissiveIntensity: 3.0 },
-      embeds: { grille: { type: 'oval', texture: 'none', width: 0.7 }, exhaust: { type: 'single' }, handle: { type: 'classic' }, mirror: { type: 'classic' } },
+      embeds: { grille: { type: 'oval', texture: 'none', width: 0.7, frame: 'chrome-thick' }, exhaust: { type: 'single' }, handle: { type: 'classic' }, mirror: { type: 'classic' } },
       accessories: { frontBumper: { type: 'chrome' }, rearBumper: { type: 'chrome' }, antenna: { type: 'rod' }, wheelCover: { type: 'moon' },
                      midLine: { type: 'chrome' }, archTrim: { type: 'chrome' } },
       interior: { dashboard: 'minimal', leatherColor: '#27272a', ambientColor: '#f97316' },
@@ -1150,7 +1156,7 @@ const FIVE_CARS = {
       tire: { treadStyle: 'sport', bumpScale: 0.11 },
       headlight: { type: 'wrap-boomerang', drl: 'none', emissiveIntensity: 4.6 },
       taillight: { type: 'wrap', emissiveIntensity: 4.4 },
-      embeds: { grille: { type: 'shield', texture: 'honeycomb', width: 0.8, height: 1.1 }, exhaust: { type: 'quad' }, handle: { type: 'flush' }, mirror: { type: 'sport' }, intake: { type: 'sport' }, rearVent: { type: 'corner' } },
+      embeds: { grille: { type: 'shield', texture: 'honeycomb', width: 0.8, height: 1.1, pattern: 'diamond-studs', finish: 'darkchrome', frame: 'black', relief: 0.6 }, exhaust: { type: 'quad' }, handle: { type: 'flush' }, mirror: { type: 'sport' }, intake: { type: 'sport' }, rearVent: { type: 'corner' } },
       accessories: { frontBumper: { type: 'sport' }, rearBumper: { type: 'diffuser' }, spoiler: { type: 'lip' }, antenna: { type: 'shark' }, sill: { type: 'carbon' },
                      rearLights: { type: 'reflector' } },
       interior: { dashboard: 'sport', leatherColor: '#0f172a', ambientColor: '#3b82f6' },
@@ -3803,7 +3809,7 @@ function conformToFace(obj, P, dir, yRef, maxEdge = 0){
   const v = new THREE.Vector3(), n = new THREE.Vector3(), inv = new THREE.Matrix4(), nm = new THREE.Matrix3(), nmInv = new THREE.Matrix3();
   obj.traverse(o => {
     if (!o.isMesh) return;
-    if (maxEdge > 0){
+    if (maxEdge > 0 && !o.userData.preTessellated){
       // Triángulos con la posición en metros del coche (para medir los lados), partidos, y de
       // vuelta a las coordenadas de la pieza. El resto de atributos se interpola tal cual
       const g0 = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
@@ -5036,6 +5042,20 @@ const OPTIONS = {
     ['parametric', 'Paramétrica de facetas con luces ocultas (estilo Tucson)'],
     ['none', 'Sin parrilla (frontal cerrado)'],
   ],
+  grillePattern: [
+    ['auto', 'Dibujo según el tipo de parrilla'], ['none', 'Liso, sin dibujo'], ['h-bars', 'Lamas horizontales'],
+    ['v-bars', 'Lamas verticales'], ['diagonal', 'Lamas oblicuas'], ['grid', 'Cuadrícula'], ['diamond', 'Rombos'],
+    ['diamond-studs', 'Diamantes en relieve'], ['honeycomb', 'Panal hexagonal'], ['dots', 'Malla de puntos'],
+    ['chevron', 'Galones en V'], ['cross', 'Cruz central'],
+  ],
+  grilleFrame: [
+    ['chrome', 'Marco cromado fino'], ['chrome-thick', 'Marco cromado ancho'], ['double', 'Doble filo cromado'],
+    ['black', 'Marco negro brillante'], ['body', 'Marco del color de la carrocería'], ['none', 'Sin marco'],
+  ],
+  grilleFinish: [
+    ['auto', 'Acabado según el dibujo'], ['chrome', 'Dibujo cromado'], ['darkchrome', 'Dibujo en cromo oscuro'],
+    ['black', 'Dibujo negro brillante'], ['body', 'Dibujo del color de la carrocería'], ['alu', 'Dibujo de aluminio'],
+  ],
   exhaust: [
     ['none', 'Sin escape visible'], ['single', 'Una salida'], ['dual', 'Doble (una por lado)'],
     ['quad', 'Cuádruple'], ['center', 'Doble central'], ['twin-side', 'Doble en un lado'],
@@ -5250,65 +5270,327 @@ function buildHeadlights(parent, P){
 }
 
 // Parrilla delantera centrada en (0, y) sobre la cara z
-function buildGrille(g, type, gW, gH, y, zFace, prot){
-  // El marco y las lamas salen unos milímetros más que el fondo: si estuvieran en el mismo plano,
-  // al doblar la parrilla con la forma del morro se pelearían a trozos
-  const framed = (name, w, h, x = 0) => {
-    embedBox(g, `${name}Base`, [w, h, 0],           [x, y, zFace],                [0,0,1], prot, MAT.grilleBase);
-    embedBox(g, `${name}Top`,  [w + 0.06, 0.02, 0], [x, y + h / 2, zFace],        [0,0,1], prot + 0.003, MAT.chrome);
-    embedBox(g, `${name}Bot`,  [w + 0.06, 0.02, 0], [x, y - h / 2, zFace],        [0,0,1], prot + 0.003, MAT.chrome);
-    embedBox(g, `${name}L`,    [0.025, h, 0],       [x - w / 2 - 0.03, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
-    embedBox(g, `${name}R`,    [0.025, h, 0],       [x + w / 2 + 0.03, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
+// ---------------------------------------------------------------------------------------------
+// PARRILLA: contorno (según el tipo), fondo, dibujo en relieve recortado al contorno y marco.
+// Todo es geometría en el plano de la parrilla: x a lo ancho, y hacia arriba y z hacia fuera, con
+// la cara del fondo en z = prot. Luego la parrilla entera se dobla con la forma del morro
+
+// Recorta un polígono (convexo o no) con el semiplano (p - P)·n >= 0
+function clipHalfPlane(poly, px, py, nx, ny){
+  const out = [];
+  for (let i = 0; i < poly.length; i++){
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const da = (a[0] - px) * nx + (a[1] - py) * ny, db = (b[0] - px) * nx + (b[1] - py) * ny;
+    if (da >= 0) out.push(a);
+    if ((da >= 0) !== (db >= 0)){ const t = da / (da - db); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+  }
+  return out;
+}
+// Polígono convexo en sentido antihorario
+function ccwPoly(pts){
+  let a = 0;
+  for (let i = 0; i < pts.length; i++){ const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length]; a += x0 * y1 - x1 * y0; }
+  return a < 0 ? pts.slice().reverse() : pts;
+}
+// El mismo contorno convexo metido hacia dentro una distancia d (cada lado se desplaza y recorta)
+function insetConvex(pts, d){
+  if (d <= 0) return pts;
+  let poly = pts;
+  for (let i = 0; i < pts.length && poly.length >= 3; i++){
+    const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length];
+    const L = Math.hypot(x1 - x0, y1 - y0);
+    if (L < 1e-6) continue;
+    const nx = -(y1 - y0) / L, ny = (x1 - x0) / L;
+    poly = clipHalfPlane(poly, x0 + nx * d, y0 + ny * d, nx, ny);
+  }
+  return poly;
+}
+// Tramo de un segmento dentro de un polígono convexo antihorario, o null
+function clipSegment(poly, x0, y0, x1, y1){
+  let t0 = 0, t1 = 1;
+  const dx = x1 - x0, dy = y1 - y0;
+  for (let i = 0; i < poly.length; i++){
+    const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length];
+    const nx = -(by - ay), ny = bx - ax;
+    const num = (x0 - ax) * nx + (y0 - ay) * ny, den = dx * nx + dy * ny;
+    if (Math.abs(den) < 1e-12){ if (num < 0) return null; continue; }
+    const t = -num / den;
+    if (den > 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t);
+    if (t0 >= t1) return null;
+  }
+  return [x0 + dx * t0, y0 + dy * t0, x0 + dx * t1, y0 + dy * t1];
+}
+function insideConvex(poly, x, y){
+  for (let i = 0; i < poly.length; i++){
+    const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length];
+    if ((x - ax) * -(by - ay) + (y - ay) * (bx - ax) < 0) return false;
+  }
+  return true;
+}
+
+// Triángulos sueltos (cada uno con su normal de cara)
+function triSoup(){
+  const pos = [];
+  return {
+    tri(a, b, c){ pos.push(...a, ...b, ...c); },
+    quad(a, b, c, d){ pos.push(...a, ...b, ...c, ...a, ...c, ...d); },
+    get size(){ return pos.length; },
+    geometry(){
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.computeVertexNormals();
+      return g;
+    },
   };
-  // Contorno libre: fondo oscuro extruido y marco cromado con el mismo contorno
-  const shaped = (name, outline) => {
-    const depth = EMBED_DEPTH + prot;
-    const toShape = k => new THREE.Shape(outline.map(([px, py]) => new THREE.Vector2(px * k, py * k)));
-    const ringShape = toShape(1);
-    ringShape.holes.push(toShape(0.92));
-    const parts = [
-      [new THREE.ExtrudeGeometry(toShape(0.92), { depth, bevelEnabled: false }), MAT.grilleBase, 'Base', 0],
-      [new THREE.ExtrudeGeometry(ringShape, { depth: depth + 0.004, bevelEnabled: false }), MAT.chrome, 'Frame', 0.004],
-    ];
-    for (const [geo, mat, suffix, extra] of parts){
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set(0, y, zFace + prot + extra - (depth + extra));
-      addMesh(g, `${name}${suffix}`, m);
+}
+// Barra recta de (x0, y0) a (x1, y1): prisma con la sección [u (a lo ancho), z] dada en sentido
+// antihorario. Las de arista viva (cresta) brillan como piezas facetadas
+function addBar(soup, x0, y0, x1, y1, section){
+  const L = Math.hypot(x1 - x0, y1 - y0);
+  if (L < 1e-4) return;
+  const tx = (x1 - x0) / L, ty = (y1 - y0) / L, nx = -ty, ny = tx;
+  const at = (s, [u, z]) => [x0 + tx * L * s + nx * u, y0 + ty * L * s + ny * u, z];
+  const m = section.length;
+  // En tramos de 2 cm: así se dobla con la forma del morro sin partirla después
+  const nSeg = Math.max(1, Math.ceil(L / 0.02));
+  for (let q = 0; q < nSeg; q++){
+    const s0 = q / nSeg, s1 = (q + 1) / nSeg;
+    for (let k = 0; k < m; k++){
+      const a = section[k], b = section[(k + 1) % m];
+      soup.quad(at(s0, a), at(s0, b), at(s1, b), at(s1, a));
+    }
+  }
+  for (let k = 1; k + 1 < m; k++){
+    soup.tri(at(1, section[0]), at(1, section[k]), at(1, section[k + 1]));
+    soup.tri(at(0, section[0]), at(0, section[k + 1]), at(0, section[k]));
+  }
+}
+const barSection = (w, z0, h, ridge) => ridge
+  ? [[-w / 2, z0], [w / 2, z0], [w / 2, z0 + h * 0.55], [0, z0 + h], [-w / 2, z0 + h * 0.55]]
+  : [[-w / 2, z0], [w / 2, z0], [w / 2, z0 + h], [-w / 2, z0 + h]];
+
+// Contorno con un punto cada step como mucho (conserva los vértices y quita los repetidos)
+function resamplePoly(poly, step){
+  const out = [];
+  for (let i = 0; i < poly.length; i++){
+    const [x0, y0] = poly[i], [x1, y1] = poly[(i + 1) % poly.length];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / step));
+    for (let k = 0; k < n; k++){
+      const p = [x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n], q = out[out.length - 1];
+      if (!q || Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-5) out.push(p);
+    }
+  }
+  return out;
+}
+// Dirección hacia dentro de cada vértice de un polígono convexo antihorario, ya alargada para que
+// los lados se desplacen la misma distancia (inglete)
+function miterIn(poly){
+  const n = poly.length;
+  const edgeN = i => { const [x0, y0] = poly[i], [x1, y1] = poly[(i + 1) % n]; const L = Math.hypot(x1 - x0, y1 - y0) || 1; return [-(y1 - y0) / L, (x1 - x0) / L]; };
+  return poly.map((_, i) => {
+    const a = edgeN((i + n - 1) % n), b = edgeN(i);
+    let mx = a[0] + b[0], my = a[1] + b[1];
+    const L = Math.hypot(mx, my) || 1;
+    mx /= L; my /= L;
+    const k = 1 / Math.max(0.35, mx * b[0] + my * b[1]);
+    return [mx * k, my * k];
+  });
+}
+// Marco: perfil [hacia dentro, z] barrido a lo largo del contorno. Las normales son suaves a lo
+// ancho del perfil (cantos redondeados) pero cada tramo del contorno lleva la suya: así las
+// esquinas vivas (hexágono, escudo) quedan vivas y no hacen destellos
+function grilleRing(outer, w, zf, zb, bevel){
+  const P = resamplePoly(outer, 0.02), M = miterIn(P), n = P.length;
+  const b = Math.min(bevel, w * 0.4);
+  const prof = b > 0
+    ? [[0, zb], [0, zf - b], [0.29 * b, zf - 0.29 * b], [b, zf], [w - b, zf], [w - 0.29 * b, zf - 0.29 * b], [w, zf - b], [w, zb]]
+    : [[0, zb], [0, zf], [w, zf], [w, zb]];
+  const m = prof.length;
+  // Normal de cada punto del perfil en el plano [hacia dentro, z]: media de sus dos lados
+  const edgeN = j => { const dd = prof[j + 1][0] - prof[j][0], dz = prof[j + 1][1] - prof[j][1], L = Math.hypot(dd, dz) || 1; return [-dz / L, dd / L]; };
+  const PN = prof.map((_, j) => {
+    const a = j > 0 ? edgeN(j - 1) : null, c = j < m - 1 ? edgeN(j) : null;
+    const v = b > 0 && a && c ? [a[0] + c[0], a[1] + c[1]] : (c || a);
+    const L = Math.hypot(v[0], v[1]) || 1;
+    return [v[0] / L, v[1] / L];
+  });
+  const pos = [], nor = [];
+  const vert = (i, j, nx, ny) => {
+    const [d, z] = prof[j];
+    pos.push(P[i][0] + M[i][0] * d, P[i][1] + M[i][1] * d, z);
+    nor.push(nx * PN[j][0], ny * PN[j][0], PN[j][1]);
+  };
+  for (let i = 0; i < n; i++){
+    const i1 = (i + 1) % n;
+    const ex = P[i1][0] - P[i][0], ey = P[i1][1] - P[i][1], L = Math.hypot(ex, ey) || 1;
+    const nx = -ey / L, ny = ex / L;            // hacia dentro de este tramo
+    for (let j = 0; j + 1 < m; j++){
+      // Sin suavizar entre los lados del perfil que forman canto vivo (sin bisel)
+      vert(i, j, nx, ny); vert(i1, j, nx, ny); vert(i1, j + 1, nx, ny);
+      vert(i, j, nx, ny); vert(i1, j + 1, nx, ny); vert(i, j + 1, nx, ny);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  if (!(b > 0)) geo.computeVertexNormals();     // sin bisel: caras planas
+  return geo;
+}
+// Fondo: la cara de delante de un polígono convexo en filas de step (con UV en metros para la
+// textura) y su canto hasta zb
+function grilleCap(poly, zf, zb, step){
+  const ys = poly.map(p => p[1]), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  let nr = Math.max(2, Math.ceil((y1 - y0) / step));
+  if (nr % 2) nr++;
+  const span = y => {
+    let xl = Infinity, xr = -Infinity;
+    for (let i = 0; i < poly.length; i++){
+      const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length];
+      if ((ay - y) * (by - y) > 0 || ay === by) continue;
+      const x = ax + (bx - ax) * (y - ay) / (by - ay);
+      xl = Math.min(xl, x); xr = Math.max(xr, x);
+    }
+    return xl <= xr ? [xl, xr] : [0, 0];
+  };
+  const rows = [];
+  for (let j = 0; j <= nr; j++){
+    const y = y0 + (y1 - y0) * j / nr;
+    const [xl, xr] = span(Math.min(y1 - 1e-6, Math.max(y0 + 1e-6, y)));
+    const nc = Math.max(1, Math.ceil((xr - xl) / step));
+    rows.push(Array.from({ length: nc + 1 }, (_, k) => [xl + (xr - xl) * k / nc, y]));
+  }
+  const pos = [];
+  const tri = (a, b, c) => pos.push(a[0], a[1], zf, b[0], b[1], zf, c[0], c[1], zf);
+  for (let j = 0; j < nr; j++){
+    const A = rows[j], B = rows[j + 1];
+    let i = 0, k = 0;
+    while (i < A.length - 1 || k < B.length - 1){
+      const tA = (i + 1) / (A.length - 1), tB = (k + 1) / (B.length - 1);
+      if (k >= B.length - 1 || (i < A.length - 1 && tA <= tB)){ tri(A[i], A[i + 1], B[k]); i++; }
+      else { tri(A[i], B[k + 1], B[k]); k++; }
+    }
+  }
+  // Canto alrededor (se ve si no hay marco)
+  const P = resamplePoly(poly, 0.02);
+  for (let i = 0; i < P.length; i++){
+    const a = P[i], b = P[(i + 1) % P.length];
+    pos.push(a[0], a[1], zb, b[0], b[1], zb, b[0], b[1], zf, a[0], a[1], zb, b[0], b[1], zf, a[0], a[1], zf);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const uv = [];
+  for (let i = 0; i < pos.length; i += 3) uv.push(pos[i], pos[i + 1]);
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Opciones de la parrilla además del tipo (que da el contorno)
+const GRILLE_AUTO = { slats: 'v-bars', 'bars-h': 'h-bars', honeycomb: 'honeycomb', mesh: 'dots', solid: 'none',
+  cross: 'cross', twin: 'v-bars', shield: 'none', hex: 'none', oval: 'h-bars' };
+const GRILLE_FINISH_AUTO = { 'h-bars': 'chrome', 'v-bars': 'chrome', diagonal: 'chrome', grid: 'chrome', cross: 'chrome',
+  chevron: 'chrome', diamond: 'darkchrome', 'diamond-studs': 'chrome', honeycomb: 'darkchrome', dots: 'darkchrome' };
+const grilleFinishMat = f => ({ chrome: MAT.chrome, darkchrome: MAT.darkChrome, black: MAT.glossBlack, body: MAT.paint, alu: MAT.alu }[f] || MAT.chrome);
+// Marcos: ancho, material y si lleva los cantos redondeados
+const GRILLE_FRAMES = {
+  chrome:         { w: 0.018, mat: () => MAT.chrome,     bevel: 0.003 },
+  'chrome-thick': { w: 0.040, mat: () => MAT.chrome,     bevel: 0.006 },
+  double:         { w: 0.027, mat: () => MAT.chrome,     bevel: 0.002 },
+  black:          { w: 0.026, mat: () => MAT.glossBlack, bevel: 0.004 },
+  body:           { w: 0.036, mat: () => MAT.paint,      bevel: 0.008 },
+  none:           { w: 0.0,   mat: () => null,           bevel: 0 },
+};
+
+// Dibujo en relieve dentro del polígono clip (antihorario). z0 = base de las piezas, h = relieve
+function grillePattern(soup, kind, clip, S, z0, h){
+  const xs = clip.map(p => p[0]), ys = clip.map(p => p[1]);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const R = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 + 0.05;
+  const k = THREE.MathUtils.clamp(S, 0.7, 1.4);
+  // Familia de barras paralelas con ángulo a y separación sp; una pasa por el centro
+  const family = (a, sp, w, dz = 0, ridge = true) => {
+    const tx = Math.cos(a), ty = Math.sin(a), nx = -ty, ny = tx;
+    for (let i = -Math.ceil(R / sp); i <= Math.ceil(R / sp); i++){
+      const ox = cx + nx * i * sp, oy = cy + ny * i * sp;
+      const seg = clipSegment(clip, ox - tx * R, oy - ty * R, ox + tx * R, oy + ty * R);
+      if (seg) addBar(soup, ...seg, barSection(w, z0 + dz, h, ridge));
     }
   };
+  const D = Math.PI / 180;
+  switch (kind){
+    case 'h-bars':  family(0, 0.038 * S, 0.012 * k); break;
+    case 'v-bars':  family(90 * D, 0.055 * S, 0.014 * k); break;
+    case 'diagonal': family(62 * D, 0.045 * S, 0.010 * k); break;
+    case 'grid':    family(0, 0.045 * S, 0.008 * k); family(90 * D, 0.045 * S, 0.008 * k, 0.0015); break;
+    case 'diamond': family(38 * D, 0.042 * S, 0.008 * k); family(-38 * D, 0.042 * S, 0.008 * k, 0.0015); break;
+    case 'cross': {
+      const segH = clipSegment(clip, cx - R, cy, cx + R, cy), segV = clipSegment(clip, cx, cy - R, cx, cy + R);
+      if (segH) addBar(soup, ...segH, barSection(0.022, z0, h, true));
+      if (segV) addBar(soup, ...segV, barSection(0.022, z0 + 0.0015, h, true));
+      break;
+    }
+    case 'chevron': {
+      // Uves apiladas: cada una baja desde los lados hasta el centro
+      const sp = 0.045 * S, s = 0.42, w = 0.010 * k;
+      for (let i = -Math.ceil(R / sp) - 8; i <= Math.ceil(R / sp); i++){
+        const yv = cy + i * sp;
+        for (const dir of [-1, 1]){
+          const seg = clipSegment(clip, cx, yv, cx + dir * R, yv + s * R);
+          if (seg) addBar(soup, ...seg, barSection(w, z0 + (dir > 0 ? 0.0015 : 0), h, true));
+        }
+      }
+      break;
+    }
+    case 'honeycomb': {
+      // Paredes de celdas hexagonales (tres por celda bastan para toda la red)
+      const a = 0.022 * S, dx = 1.5 * a, dy = Math.sqrt(3) * a, wall = 0.0045;
+      for (let i = -Math.ceil(R / dx); i <= Math.ceil(R / dx); i++) for (let j = -Math.ceil(R / dy); j <= Math.ceil(R / dy); j++){
+        const hx = cx + i * dx, hy = cy + j * dy + (i & 1 ? dy / 2 : 0);
+        for (let e = 0; e < 3; e++){
+          const a0 = Math.PI / 3 * e, a1 = Math.PI / 3 * (e + 1);
+          const seg = clipSegment(clip, hx + a * Math.cos(a0), hy + a * Math.sin(a0), hx + a * Math.cos(a1), hy + a * Math.sin(a1));
+          if (seg) addBar(soup, ...seg, barSection(wall, z0, h, false));
+        }
+      }
+      break;
+    }
+    case 'diamond-studs': {
+      // Pirámides de base rombo en tresbolillo
+      const sx = 0.05 * S, sy = 0.032 * S, rx = sx * 0.46, ry = sy * 0.9;
+      for (let j = -Math.ceil(R / sy); j <= Math.ceil(R / sy); j++) for (let i = -Math.ceil(R / sx); i <= Math.ceil(R / sx); i++){
+        const px = cx + i * sx + (j & 1 ? sx / 2 : 0), py = cy + j * sy;
+        const c = [[px + rx, py], [px, py + ry], [px - rx, py], [px, py - ry]];
+        if (!c.every(([x, y]) => insideConvex(clip, x, y))) continue;
+        const top = [px, py, z0 + h * 1.15];
+        for (let q = 0; q < 4; q++) soup.tri([...c[q], z0], [...c[(q + 1) % 4], z0], top);
+      }
+      break;
+    }
+    case 'dots': {
+      // Malla de tachuelas: troncos de cono de ocho lados
+      const sp = 0.03 * S, r = 0.0095 * S, n = 8;
+      for (let j = -Math.ceil(R / sp); j <= Math.ceil(R / sp); j++) for (let i = -Math.ceil(R / sp); i <= Math.ceil(R / sp); i++){
+        const px = cx + i * sp + (j & 1 ? sp / 2 : 0), py = cy + j * sp * 0.87;
+        if (!insideConvex(clip, px - r, py) || !insideConvex(clip, px + r, py) || !insideConvex(clip, px, py - r) || !insideConvex(clip, px, py + r)) continue;
+        const ring = (rr, z) => Array.from({ length: n }, (_, q) => [px + rr * Math.cos(2 * Math.PI * q / n), py + rr * Math.sin(2 * Math.PI * q / n), z]);
+        const lo = ring(r, z0), hi = ring(r * 0.55, z0 + h * 0.8);
+        for (let q = 0; q < n; q++){ const q1 = (q + 1) % n; soup.quad(lo[q], lo[q1], hi[q1], hi[q]); }
+        for (let q = 1; q + 1 < n; q++) soup.tri(hi[0], hi[q], hi[q + 1]);
+      }
+      break;
+    }
+  }
+}
 
+function buildGrille(g, type, gW, gH, y, zFace, prot){
+  const G = CONFIG.embeds.grille;
   switch (type){
     case 'none': return;
     case 'parametric': {
       // Pieza de Blender (1.50 x 0.40 de diseño) con sus luces diurnas en los extremos
-      const part = addPart(g, 'GrilleParametric', 'grille_parametric', [0, y, zFace + prot], { scale: [gW / 1.5, gH / 0.40, 1] });
-      if (part) return;
-      shaped('GrilleShield', [[-gW / 2, gH / 2], [gW / 2, gH / 2], [gW * 0.35, -gH / 2], [-gW * 0.35, -gH / 2]]);
-      return;
-    }
-    case 'twin':
-      framed('GrilleL', gW * 0.44, gH, -gW * 0.27);
-      framed('GrilleR', gW * 0.44, gH,  gW * 0.27);
-      return;
-    case 'shield':
-      shaped('GrilleShield', [[-gW / 2, gH / 2], [gW / 2, gH / 2], [gW * 0.3, -gH / 2], [-gW * 0.3, -gH / 2]]);
-      return;
-    case 'hex':
-      shaped('GrilleHex', [[-gW / 2, 0], [-gW * 0.38, gH / 2], [gW * 0.38, gH / 2], [gW / 2, 0], [gW * 0.38, -gH / 2], [-gW * 0.38, -gH / 2]]);
-      return;
-    case 'oval': {
-      const outline = [];
-      for (let i = 0; i < 40; i++){
-        const a = i / 40 * Math.PI * 2;
-        outline.push([Math.cos(a) * gW / 2, Math.sin(a) * gH / 2]);
-      }
-      shaped('GrilleOval', outline);
-      for (let k = -2; k <= 2; k++){
-        const dy = k * gH * 0.16;
-        const w = gW * 0.9 * Math.sqrt(Math.max(0, 1 - (2 * dy / gH) ** 2));
-        embedBox(g, `GrilleOvalBar_${k + 2}`, [w, 0.014, 0], [0, y + dy, zFace], [0,0,1], prot + 0.002, MAT.chrome);
-      }
-      return;
+      if (addPart(g, 'GrilleParametric', 'grille_parametric', [0, y, zFace + prot], { scale: [gW / 1.5, gH / 0.40, 1] })) return;
+      type = 'shield';
+      break;
     }
     case 'vertical-slots': {
       const n = 6;
@@ -5319,23 +5601,42 @@ function buildGrille(g, type, gW, gH, y, zFace, prot){
     }
   }
 
-  framed('Grille', gW, gH);
-  if (type === 'slats' || type === 'bars-h'){
-    const vertical = (type !== 'bars-h');
-    const nSlats = vertical ? 13 : 7;
-    for (let i = 0; i < nSlats; i++){
-      const t = (i / (nSlats - 1)) - 0.5;
-      const px = vertical ? t * gW * 0.92 : 0;
-      const py = vertical ? y : y + t * gH * 0.92;
-      const sz = vertical ? [0.018, gH * 0.92, 0] : [gW * 0.92, 0.018, 0];
-      embedBox(g, `GrilleSlat_${i}`, sz, [px, py, zFace], [0,0,1], prot + 0.004, MAT.chrome);
+  // Contornos de este tipo (la doble tiene dos), en sentido antihorario
+  const ellipse = Array.from({ length: 48 }, (_, i) => [Math.cos(i / 48 * Math.PI * 2) * gW / 2, y + Math.sin(i / 48 * Math.PI * 2) * gH / 2]);
+  const outlines = ({
+    twin:   [rrPoly(-gW * 0.25, y, gW * 0.46, gH, 0.035), rrPoly(gW * 0.25, y, gW * 0.46, gH, 0.035)],
+    shield: [[[-gW / 2, y + gH / 2], [gW / 2, y + gH / 2], [gW * 0.3, y - gH / 2], [-gW * 0.3, y - gH / 2]]],
+    hex:    [[[-gW / 2, y], [-gW * 0.38, y + gH / 2], [gW * 0.38, y + gH / 2], [gW / 2, y], [gW * 0.38, y - gH / 2], [-gW * 0.38, y - gH / 2]]],
+    oval:   [ellipse],
+  }[type] || [rrPoly(0, y, gW, gH, 0.02)]).map(ccwPoly);
+
+  const F = GRILLE_FRAMES[G.frame] || GRILLE_FRAMES.chrome;
+  const relief = THREE.MathUtils.clamp(G.relief ?? 0.5, 0, 1);
+  const h = 0.004 + 0.016 * relief;                    // altura del dibujo sobre el fondo
+  const zFront = zFace + prot + h + 0.004;             // el marco sobresale del dibujo
+  const kind = (G.pattern && G.pattern !== 'auto') ? G.pattern : (GRILLE_AUTO[type] || 'none');
+  const finish = (G.finish && G.finish !== 'auto') ? G.finish : (GRILLE_FINISH_AUTO[kind] || 'chrome');
+  const soup = triSoup();
+  // Piezas ya troceadas: al doblarlas con la forma del morro no hace falta partirlas más
+  const piece = (name, geo, mat) => { const m = addMesh(g, name, new THREE.Mesh(geo, mat)); m.userData.preTessellated = true; return m; };
+  const zb = zFace - 0.03, zBase = zFace + prot;
+
+  outlines.forEach((outer, i) => {
+    const tag = outlines.length > 1 ? `_${i}` : '';
+    // Fondo hasta media anchura del marco (sin hueco entre los dos)
+    piece(`GrilleBase${tag}`, grilleCap(insetConvex(outer, F.w * 0.5), zBase, zb, 0.02), MAT.grilleBase);
+    if (G.frame === 'double'){
+      piece(`GrilleFrame${tag}`, grilleRing(outer, 0.009, zFront, zb, F.bevel), MAT.chrome);
+      piece(`GrilleFrameGap${tag}`, grilleRing(insetConvex(outer, 0.008), 0.010, zBase + 0.002, zb, 0), MAT.glossBlack);
+      piece(`GrilleFrameIn${tag}`, grilleRing(insetConvex(outer, 0.017), 0.010, zFront - 0.002, zb, F.bevel), MAT.chrome);
+    } else if (F.w > 0){
+      piece(`GrilleFrame${tag}`, grilleRing(outer, F.w, zFront, zb, F.bevel), F.mat());
     }
-  } else if (type === 'honeycomb' || type === 'mesh'){
-    embedBox(g, 'GrilleInnerBorder', [gW - 0.02, 0.015, 0], [0, y + gH / 2 - 0.02, zFace], [0,0,1], prot + 0.003, MAT.chrome);
-  } else if (type === 'cross'){
-    embedBox(g, 'GrilleCrossH', [gW * 0.96, 0.022, 0], [0, y, zFace], [0,0,1], prot + 0.005, MAT.chrome);
-    embedBox(g, 'GrilleCrossV', [0.022, gH * 0.96, 0], [0, y, zFace], [0,0,1], prot + 0.0055, MAT.chrome);
-  }
+    // El dibujo llega hasta debajo del canto del marco: así no se ven los cortes
+    const clip = insetConvex(outer, Math.max(0.004, F.w - 0.002));
+    if (kind !== 'none' && clip.length >= 3) grillePattern(soup, kind, clip, THREE.MathUtils.clamp(G.patternScale ?? 1, 0.5, 2), zBase - 0.002, h);
+  });
+  if (soup.size) piece('GrillePattern', soup.geometry(), grilleFinishMat(finish));
 }
 
 // Medidas de la parrilla en la cara del morro: ancho, alto y altura de su centro
@@ -6874,6 +7175,11 @@ function bindUI(){
   $('grilleTexture').addEventListener('change', e => { CONFIG.embeds.grille.texture = e.target.value; updateMaterials(); markDirty(); });
   lockable($('grilleType'), 'grilleType', () => CONFIG.embeds.grille.type, v => { CONFIG.embeds.grille.type = v; });
   lockable($('grilleTexture'), 'grilleTexture', () => CONFIG.embeds.grille.texture, v => { CONFIG.embeds.grille.texture = v; });
+  addSelect('grillePattern', OPTIONS.grillePattern, () => CONFIG.embeds.grille.pattern || 'auto', v => CONFIG.embeds.grille.pattern = v);
+  addSelect('grilleFrame', OPTIONS.grilleFrame, () => CONFIG.embeds.grille.frame || 'chrome', v => CONFIG.embeds.grille.frame = v);
+  addSelect('grilleFinish', OPTIONS.grilleFinish, () => CONFIG.embeds.grille.finish || 'auto', v => CONFIG.embeds.grille.finish = v);
+  addSlider('grilleRelief', 'vGrRel', () => CONFIG.embeds.grille.relief ?? 0.5, v => CONFIG.embeds.grille.relief = v, v => v.toFixed(2), () => markDirty());
+  addSlider('grilleScale', 'vGrSc', () => CONFIG.embeds.grille.patternScale ?? 1, v => CONFIG.embeds.grille.patternScale = v, v => v.toFixed(2), () => markDirty());
   lockable($('grilleEmblem'), 'grilleEmblem', () => CONFIG.embeds.grille.emblem, v => { CONFIG.embeds.grille.emblem = v; });
   addSelect('intakeType', OPTIONS.intake, () => CONFIG.embeds.intake.type, v => CONFIG.embeds.intake.type = v);
   addSlider('intakeSize', 'vInSz', () => CONFIG.embeds.intake.size, v => CONFIG.embeds.intake.size = v, v => v.toFixed(2), () => markDirty());
@@ -7115,6 +7421,12 @@ function randomize(){
   CONFIG.embeds.rearVent.type = chance(0.25) ? pick(OPTIONS.rearVent, ['corner', 'slots', 'vertical', 'triangle']) : 'none';
   CONFIG.embeds.grilleTrim = { type: chance(0.4) ? pick(OPTIONS.grilleTrim, ['bar', 'smile', 'wing', 'gloss', 'led']) : 'none', offsetY: 0 };
   CONFIG.embeds.grille.type  = pick(OPTIONS.grille);
+  Object.assign(CONFIG.embeds.grille, {
+    pattern: chance(0.45) ? 'auto' : pick(OPTIONS.grillePattern, ['h-bars', 'v-bars', 'diagonal', 'grid', 'diamond', 'diamond-studs', 'honeycomb', 'dots', 'chevron']),
+    frame: pick(OPTIONS.grilleFrame, ['chrome', 'chrome', 'chrome-thick', 'double', 'black', 'body', 'none']),
+    finish: chance(0.6) ? 'auto' : pick(OPTIONS.grilleFinish, ['chrome', 'darkchrome', 'black', 'body', 'alu']),
+    relief: rnd(0.25, 0.85), patternScale: rnd(0.8, 1.3),
+  });
   CONFIG.embeds.exhaust.type = pick(OPTIONS.exhaust, ['none', 'single', 'dual', 'quad', 'center', 'twin-side', 'rect']);
   CONFIG.embeds.handle.type  = pick(OPTIONS.handle, ['chrome', 'black', 'flush', 'pull', 'popout', 'classic']);
   CONFIG.embeds.mirror.type  = pick(OPTIONS.mirror);
@@ -7281,6 +7593,11 @@ function randomizeWild(){
   CONFIG.embeds.rearVent.type = monster ? 'none' : pickV(['corner', 'corner', 'slots', 'triangle', 'vertical', 'none']);
   CONFIG.embeds.grilleTrim = { type: monster ? 'none' : pickV(['none', 'none', 'wing', 'gloss', 'led']), offsetY: 0 };
   CONFIG.embeds.grille.type   = monster ? pickV(['bars-h', 'slats', 'cross', 'vertical-slots']) : pickV(['honeycomb', 'hex', 'shield', 'mesh', 'none', 'twin']);
+  Object.assign(CONFIG.embeds.grille, {
+    pattern: monster ? pickV(['h-bars', 'grid', 'auto']) : pickV(['diamond-studs', 'honeycomb', 'diamond', 'chevron', 'auto']),
+    frame: monster ? pickV(['chrome-thick', 'black', 'body']) : pickV(['black', 'none', 'chrome', 'double']),
+    finish: pickV(['auto', 'darkchrome', 'black', 'chrome']), relief: rnd(0.5, 1.0), patternScale: rnd(0.8, 1.2),
+  });
   CONFIG.embeds.exhaust.type  = monster ? pickV(['stacks', 'side', 'dual']) : pickV(['quad', 'center', 'twin-side', 'side', 'rect']);
   CONFIG.embeds.handle.type   = pickV(['flush', 'popout', 'hidden', 'black']);
   CONFIG.embeds.mirror.type   = pickV(['sport', 'camera']);
