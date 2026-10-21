@@ -27,6 +27,7 @@ ROLES = {   # color solo para la vista previa en Blender
     'screen': (0.03, 0.05, 0.15), 'screen_cluster': (0.03, 0.05, 0.15), 'screen_info': (0.03, 0.05, 0.15),
     'screen_wide': (0.03, 0.05, 0.15), 'screen_rear': (0.03, 0.05, 0.15),
     'brake': (0.35, 0.35, 0.36), 'light_red': (1.0, 0.05, 0.02), 'darkchrome': (0.22, 0.23, 0.26),
+    'reflector': (0.45, 0.02, 0.02),
 }
 
 
@@ -1117,6 +1118,66 @@ def parametric_grille():
     mesh(r, 'badge_mark', prism([(-0.05, -0.012), (0.05, 0.036), (0.05, 0.026), (-0.05, -0.022)], 0.006, 'xy', (0, 0.012, 0.02)), 'chrome')
 
 
+# --------------------------------------------------------------------------- zaga estilo Tucson
+def suv_rear_parts():
+    # Piloto en garras (lado derecho, x hacia fuera, cara hacia +z): fondo oscuro, tres cuchillas
+    # inclinadas y una tira fina arriba que se une a la barra de lado a lado
+    r = part('tail_claw')
+    back = [(-0.16, 0.03), (0.16, 0.03), (0.16, -0.05), (0.07, -0.13), (-0.10, -0.13)]
+    mesh(r, 'back', prism(back, 0.02, 'xy', (0, 0, -0.008)), 'dark', 0.002)
+    mesh(r, 'topline', box(0.32, 0.012, 0.02, (0, 0.022, 0.006)), 'light_red', 0.002)
+    blades = Geo()
+    for k, (x0, h) in enumerate([(-0.07, 0.115), (-0.005, 0.10), (0.06, 0.08)]):
+        # paralelogramo: arriba desplazado hacia fuera, como una garra
+        pts = [(x0, -0.015), (x0 + 0.026, -0.015), (x0 - 0.035, -0.015 - h), (x0 - 0.061, -0.015 - h)]
+        blades.merge(prism(pts, 0.016, 'xy', (0, 0, 0.006)))
+    mesh(r, 'blades', blades, 'light_red', 0.002)
+    mesh(r, 'rim', prism([(0.16, 0.03), (0.17, 0.03), (0.17, -0.055), (0.075, -0.14), (0.065, -0.13), (0.16, -0.05)], 0.018, 'xy', (0, 0, -0.004)), 'darkchrome')
+
+    # Alerón de techo grande: prolonga el techo sobre la luneta cayendo un poco, con dos aletas
+    # negras que bajan por los lados del cristal y la tercera luz de freno bajo el borde
+    # (ancho de diseño 1.40, como spoiler_roof)
+    r = part('spoiler_roofwing')
+    body = [(0.08, 0.0), (-0.20, -0.030), (-0.235, -0.026), (-0.235, -0.006), (-0.20, 0.004), (0.08, 0.030)]
+    mesh(r, 'body', prism(body, 1.40), 'roof', 0.008)
+    # Labio oscuro bajo el borde de salida (separa el alerón de la luneta)
+    mesh(r, 'lip', prism([(-0.10, -0.022), (-0.225, -0.034), (-0.225, -0.026), (-0.10, -0.014)], 1.30), 'dark', 0.002)
+    fins = Geo()
+    for x in (-0.68, 0.68):
+        fins.merge(prism([(-0.04, -0.035), (-0.20, -0.075), (-0.22, -0.028), (0.02, 0.0)], 0.026, 'zy', (x, 0, 0)))
+    mesh(r, 'fins', fins, 'dark', 0.004)
+    mesh(r, 'chmsl', box(0.56, 0.006, 0.012, (0, -0.031, -0.205)), 'light_red', 0.002)
+
+    # Protector plateado trasero (cara hacia +z, la app lo gira): banda en U, difusor oscuro con
+    # aletas, dos salidas de escape trapezoidales y catadióptricos rojos en las puntas
+    r = part('skid_rear')
+    band = [(-0.76, 0.13), (-0.68, 0.13), (-0.58, 0.035), (0.58, 0.035), (0.68, 0.13), (0.76, 0.13), (0.70, -0.035), (-0.70, -0.035)]
+    mesh(r, 'band', prism(band, 0.028, 'xy'), 'alu', 0.004)
+    mesh(r, 'diffuser', prism([(-0.52, 0.03), (0.52, 0.03), (0.46, -0.03), (-0.46, -0.03)], 0.02, 'xy', (0, 0, 0.012)), 'dark', 0.002)
+    vanes = Geo()
+    for x in (-0.18, -0.06, 0.06, 0.18):
+        vanes.merge(box(0.008, 0.05, 0.02, (x, 0.0, 0.02)))
+    mesh(r, 'vanes', vanes, 'darkchrome')
+    pipes, rims = Geo(), Geo()
+    for x in (-0.36, 0.36):
+        trap = [(x - 0.07, 0.025), (x + 0.07, 0.025), (x + 0.055, -0.02), (x - 0.055, -0.02)]
+        pipes.merge(prism(trap, 0.03, 'xy', (0, 0, 0.012)))
+        outer = [(x - 0.08, 0.032), (x + 0.08, 0.032), (x + 0.063, -0.027), (x - 0.063, -0.027)]
+        rims.merge(prism(outer, 0.024, 'xy', (0, 0, 0.012)))
+    mesh(r, 'tips', rims, 'chrome', 0.002)
+    mesh(r, 'pipes', pipes, 'dark')
+    refl = Geo()
+    for sgn in (-1, 1):
+        refl.merge(prism([(sgn * 0.70, 0.09), (sgn * 0.745, 0.125), (sgn * 0.745, 0.14), (sgn * 0.70, 0.105)], 0.034, 'xy', (0, 0, 0.004)))
+    mesh(r, 'reflectors', refl, 'reflector', 0.002)
+
+    # Protector plateado delantero: la misma banda con una lámina central
+    r = part('skid_front')
+    mesh(r, 'band', prism(band, 0.028, 'xy'), 'alu', 0.004)
+    mesh(r, 'lip', prism([(-0.40, 0.03), (0.40, 0.03), (0.34, -0.03), (-0.34, -0.03)], 0.03, 'xy', (0, 0, 0.012)), 'alu', 0.004)
+    mesh(r, 'lipline', box(0.70, 0.008, 0.03, (0, 0.0, 0.016)), 'dark')
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -1138,6 +1199,7 @@ def main():
     audio_parts()
     exterior_details()
     parametric_grille()
+    suv_rear_parts()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
