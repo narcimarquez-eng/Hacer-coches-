@@ -357,6 +357,8 @@
     <div class="sl"><span>Curvatura pilares y cristal</span><input type="range" id="pillarCurve" min="0" max="0.25" step="0.01"><b id="vPCurve"></b></div>
     <div class="sl"><span>Redondez pilares</span><input type="range" id="pillarRound" min="0" max="1" step="0.05"><b id="vPRound"></b></div>
     <div class="sl"><span>Hueco máx. de ventana</span><input type="range" id="pillarMaxWin" min="0.8" max="3.0" step="0.05"><b id="vPMaxWin"></b></div>
+    <select id="pillarRear" style="margin-top:8px"></select>
+    <div class="sl"><span>Ancho chapa trasera</span><input type="range" id="pillarRearWidth" min="0.10" max="0.80" step="0.01"><b id="vPRearW"></b></div>
   </div>
 
   <div class="grp">
@@ -803,7 +805,8 @@ const CONFIG = {
   selectedZone: 'hood',
   smoothing: 0.35,
 
-  pillars: { thick: 0.06, curve: 0.06, round: 0.5, maxWindow: 1.6 },
+  // rear: final del lateral acristalado ('bar' barra fina o panel de chapa) y rearWidth su ancho abajo
+  pillars: { thick: 0.06, curve: 0.06, round: 0.5, maxWindow: 1.6, rear: 'bar', rearWidth: 0.45 },
   // Postura: ancho de carrocería, altura de suspensión (las ruedas siguen en el suelo) e inclinación
   stance: { width: 1.0, rideHeight: 0.0, rake: 0.0 },
   designLines: { enabled: true, thickness: 0.015, random: false },
@@ -1023,6 +1026,7 @@ const FIVE_CARS = {
     config: {
       shape: { corner: 0.32, cornerRear: 0.28, shoulder: 0.08, bow: 0.09, tumblehome: 0.06 },
       bodyLines: { belt: 'sharp', crease: 'none', hood: 'two', rocker: 'scoop', depth: 1.0 },
+      pillars: { rear: 'panel', rearWidth: 0.46 },
       brakes: { disc: 'drilled', caliper: 'silver' },
       paint: { color: '#e5e7eb', type: 'pearl', metalness: 0.55, roughness: 0.16, clearcoat: 1.0 },
       roofPaint: { color: '#0b0d10', syncBodyColor: false },
@@ -1052,6 +1056,7 @@ const FIVE_CARS = {
     config: {
       shape: { corner: 0.18, cornerRear: 0.14, shoulder: 0.05, bow: 0.05, tumblehome: 0.04 },
       bodyLines: { belt: 'step', crease: 'ridge', hood: 'four', rocker: 'straight', depth: 1.0 },
+      pillars: { rear: 'panelRoof', rearWidth: 0.40 },
       brakes: { disc: 'plain', caliper: 'black' },
       paint: { color: '#6b7280', type: 'matte', metalness: 0.20, roughness: 0.80, clearcoat: 0.0 },
       roofPaint: { color: '#111827', syncBodyColor: false },
@@ -1115,6 +1120,7 @@ const FIVE_CARS = {
     config: {
       shape: { corner: 0.28, cornerRear: 0.24, shoulder: 0.09, bow: 0.08, tumblehome: 0.07 },
       bodyLines: { belt: 'step', crease: 'rising', hood: 'four', rocker: 'scoop', depth: 1.3 },
+      pillars: { rear: 'kink', rearWidth: 0.38 },
       brakes: { disc: 'slotted', caliper: 'yellow' },
       paint: { color: '#1e3a8a', type: 'metallic', metalness: 0.85, roughness: 0.18, clearcoat: 1.0 },
       roofPaint: { color: '#1e3a8a', syncBodyColor: true },
@@ -4093,13 +4099,32 @@ function buildBody(P){
   return g;
 }
 
+// Pilar trasero de chapa: en vez de acabar en una barra fina, la última ventana termina en la línea
+// que va de zTop (arriba) a zBot (abajo) y detrás queda un panel de chapa hasta el pilar C. Con
+// quiebro (kink) la esquina de abajo de la ventana se dobla hacia delante. null = barra fina
+function rearPanel(P){
+  const style = CONFIG.pillars.rear || 'bar';
+  if (style === 'bar') return null;
+  const cF = P.cabinFrontZ, cR = P.cabinRearZ, rF = P.roofFrontZ, rR = P.roofRearZ;
+  const bZ = P.bPillar ? cF + (cR - cF) * 0.47 : null;
+  // La última ventana conserva al menos 30 cm abajo y arriba
+  const limit = (bZ !== null ? bZ : Math.min(cF, rF)) - 0.30;
+  const w = THREE.MathUtils.clamp(CONFIG.pillars.rearWidth ?? 0.45, 0.05, 1.2);
+  const kink = style === 'kink' ? Math.min(0.2, 0.07 + w * 0.3) : 0;
+  const zBot = Math.min(cR + w, limit - kink);
+  const zTop = Math.min(rR + w * 0.45, limit);
+  if (zBot < cR + 0.04 || zTop < rR + 0.01) return null;
+  return { style, zTop, zBot, kink, mat: style === 'panelRoof' ? MAT.roofPaint : MAT.paint };
+}
+
 // Pilares verticales de las ventanas: el B del modelo y uno más en cada hueco que pase de
 // maxWindow. Solo cabe un pilar recto donde el hueco tiene a la vez techo y base (entre rR y rF)
 function windowDividers(P){
   const cF = P.cabinFrontZ, cR = P.cabinRearZ, rF = P.roofFrontZ, rR = P.roofRearZ;
   const bPillars = P.bPillar ? [cF + (cR - cF) * 0.47] : [];
-  const lowEdges = [cF, ...bPillars, cR];
-  const topEdges = [rF, ...bPillars, rR];
+  const rp = rearPanel(P);
+  const lowEdges = [cF, ...bPillars, rp ? rp.zBot + rp.kink : cR];
+  const topEdges = [rF, ...bPillars, rp ? rp.zTop : rR];
   const extraPillars = [];
   for (let i = 0; i < lowEdges.length - 1; i++){
     const len = lowEdges[i] - lowEdges[i + 1];
@@ -4238,6 +4263,46 @@ function buildCabin(P){
   buildGlassDetails(g, P, gw, bow, glassBottomY, glassTopY);
 
   const { bPillars, dividers } = windowDividers(P);
+  const rp = rearPanel(P);
+
+  // Borde trasero de la última ventana cuando el lateral acaba en chapa (de arriba a abajo)
+  const panelEdge = x => {
+    const yT = glassTopY(x, rp.zTop), zB = rp.zBot + rp.kink, yB = glassBottomY(zB);
+    const pts = [];
+    if (!rp.kink){
+      for (let i = 0; i <= 8; i++){ const t = i / 8; pts.push(new THREE.Vector3(x, yT + (yB - yT) * t, rp.zTop + (rp.zBot - rp.zTop) * t)); }
+      return pts;
+    }
+    // Quiebro: baja hasta un tercio de la ventana y se dobla hacia delante
+    const yK = yB + (yT - yB) * 0.42;
+    for (let i = 0; i <= 6; i++){ const t = i / 6; pts.push(new THREE.Vector3(x, yT + (yK - yT) * t, rp.zTop + (rp.zBot - rp.zTop) * t)); }
+    for (let i = 1; i <= 6; i++){
+      const t = i / 6, a = (1 - t) * (1 - t), m = 2 * (1 - t) * t, c = t * t;
+      pts.push(new THREE.Vector3(x, a * yK + m * yB + c * yB, a * rp.zBot + m * rp.zBot + c * zB));
+    }
+    return pts;
+  };
+  // Panel de chapa entre ese borde y el pilar C, del remate de cintura al larguero del techo
+  function addRearPanel(s){
+    const xs = cw;
+    const outline = [
+      ...panelEdge(xs),
+      ...Array.from({ length: 6 }, (_, i) => { const z = rp.zBot + rp.kink + (cR - rp.zBot - rp.kink) * (i + 1) / 6; return new THREE.Vector3(xs, pillarBaseY(z) - 0.006, z); }),
+      ...bowedPath(xs, getRoofY(xs, rR), rR, pillarBaseY(cR), cR, bow).reverse().slice(1),
+      ...Array.from({ length: 6 }, (_, i) => { const z = rR + (rp.zTop - rR) * (i + 1) / 6; return new THREE.Vector3(xs, railY(xs, z), z); }),
+    ];
+    // Losa con los cantos redondeados, de 1 cm por dentro del cristal a 2,4 cm por fuera
+    const t = 0.034;
+    const shape = new THREE.Shape(outline.map(p => new THREE.Vector2(s > 0 ? p.z : -p.z, p.y)));
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2, curveSegments: 4 });
+    geo.rotateY(-s * Math.PI / 2);
+    geo.translate(s > 0 ? cw + 0.024 : -(cw + 0.024), 0, 0);
+    geo.computeVertexNormals();
+    const panel = new THREE.Mesh(geo, rp.mat);
+    panel.name = `RearPanel_${s}`;
+    panel.castShadow = panel.receiveShadow = true;
+    g.add(panel);
+  }
 
   // Marco metálico: pilares A y C curvados, largueros sobre las ventanas y travesaños del techo,
   // que tapan el hueco entre el cristal y la chapa
@@ -4250,7 +4315,8 @@ function buildCabin(P){
   for (const s of [-1, 1]){
     const x = s * cw;
     sweepSection(g, `PillarA_${s}`, bowedPath(x, pillarBaseY(cF), cF, getRoofY(x, rF), rF, bow), frame, AX, MAT.roofPaint);
-    sweepSection(g, `PillarC_${s}`, bowedPath(x, getRoofY(x, rR), rR, pillarBaseY(cR), cR, bow), frame, AX, MAT.roofPaint);
+    sweepSection(g, `PillarC_${s}`, bowedPath(x, getRoofY(x, rR), rR, pillarBaseY(cR), cR, bow), frame, AX, rp ? rp.mat : MAT.roofPaint);
+    if (rp) addRearPanel(s);
 
     const railPath = [];
     for (let i = 0; i <= 16; i++){
@@ -4281,7 +4347,7 @@ function buildCabin(P){
       ? bowedPath(x, glassBottomY(cF), cF, glassTopY(x, rF), rF, bow, 12)
       : [new THREE.Vector3(x, glassBottomY(bd), bd), new THREE.Vector3(x, glassTopY(x, bd), bd)];
     const rearEdge = bd => bd === 'C'
-      ? bowedPath(x, glassTopY(x, rR), rR, glassBottomY(cR), cR, bow, 12)
+      ? (rp ? panelEdge(x) : bowedPath(x, glassTopY(x, rR), rR, glassBottomY(cR), cR, bow, 12))
       : [new THREE.Vector3(x, glassTopY(x, bd), bd), new THREE.Vector3(x, glassBottomY(bd), bd)];
 
     for (let i = 0; i < bounds.length - 1; i++){
@@ -4640,6 +4706,8 @@ const OPTIONS = {
   plates: [['eu', 'Con matrículas'], ['none', 'Sin matrículas']],
   paintReal: [['metallic', ''], ['metallic', ''], ['pearl', ''], ['solid', '']],
   roofType: [['panoramic', 'Techo con cristal panorámico (ajustable)'], ['solid', 'Techo completo de chapa (sin cristal)']],
+  pillarRear: [['bar', 'Pilar trasero fino (barra)'], ['panel', 'Pilar trasero de chapa (color carrocería)'],
+    ['panelRoof', 'Pilar trasero de chapa (color del techo)'], ['kink', 'Chapa con quiebro hacia delante (tipo Hofmeister)']],
   brakeDisc: [['drilled', 'Discos de freno perforados'], ['slotted', 'Discos de freno rayados'], ['plain', 'Discos de freno lisos']],
   caliperColor: [['red', 'Pinzas de freno rojas'], ['yellow', 'Pinzas amarillas'], ['blue', 'Pinzas azules'], ['silver', 'Pinzas plateadas'], ['black', 'Pinzas negras']],
   fuelDoor: [['square', 'Tapa de depósito cuadrada'], ['round', 'Tapa de depósito redonda'], ['none', 'Sin tapa de depósito']],
@@ -6166,6 +6234,8 @@ function bindUI(){
   addSlider('pillarCurve', 'vPCurve', () => CONFIG.pillars.curve, v => CONFIG.pillars.curve = v, v => v.toFixed(2), () => markDirty());
   addSlider('pillarRound', 'vPRound', () => CONFIG.pillars.round, v => CONFIG.pillars.round = v, v => v.toFixed(2), () => markDirty());
   addSlider('pillarMaxWin', 'vPMaxWin', () => CONFIG.pillars.maxWindow, v => CONFIG.pillars.maxWindow = v, v => v.toFixed(2), () => markDirty());
+  addSelect('pillarRear', OPTIONS.pillarRear, () => CONFIG.pillars.rear || 'bar', v => CONFIG.pillars.rear = v);
+  addSlider('pillarRearWidth', 'vPRearW', () => CONFIG.pillars.rearWidth ?? 0.45, v => CONFIG.pillars.rearWidth = v, v => v.toFixed(2), () => markDirty());
 
   // Pintura carrocería
   $('paintColor').addEventListener('input', e => {
@@ -6454,6 +6524,8 @@ function randomize(){
   // estrambótico)
   CONFIG.smoothing = rnd(0.25, 0.6);
   CONFIG.pillars = JSON.parse(JSON.stringify(DEFAULTS.pillars));
+  CONFIG.pillars.rear = ['bar', 'bar', 'panel', 'panelRoof', 'kink'][Math.floor(Math.random() * 5)];
+  CONFIG.pillars.rearWidth = rnd(0.28, 0.52);
   Object.assign(CONFIG.glass, { roofCurve: rnd(0.0, 0.12), roofYOffset: 0, roofZOffset: 0, roofGap: DEFAULTS.glass.roofGap, opacity: DEFAULTS.glass.opacity });
   CONFIG.shape = { corner: rnd(0.12, 0.34), cornerRear: rnd(0.10, 0.32), shoulder: rnd(0.035, 0.10), bow: rnd(0.03, 0.10), tumblehome: rnd(0.02, 0.08) };
   {
@@ -6687,7 +6759,8 @@ function randomizeWild(){
   CONFIG.glass.roofMetalX = rnd(0.05, 0.5);
   CONFIG.glass.roofMetalZ = rnd(0.05, 0.5);
   CONFIG.glass.opacity = rnd(0.45, 0.8);
-  CONFIG.pillars = { thick: rnd(0.04, 0.11), curve: rnd(0.04, 0.25), round: rnd(0.2, 1), maxWindow: rnd(1.2, 2.2) };
+  CONFIG.pillars = { thick: rnd(0.04, 0.11), curve: rnd(0.04, 0.25), round: rnd(0.2, 1), maxWindow: rnd(1.2, 2.2),
+    rear: pickV(['panel', 'panelRoof', 'kink', 'bar']), rearWidth: rnd(0.2, 0.7) };
 
   // Ópticas y detalles agresivos
   Object.assign(CONFIG.headlight, {
