@@ -3764,10 +3764,33 @@ function placeLowLights(g, P, e, def, y, yMax, tag){
   for (const s of [-1, 1]) addPart(g, `${tag}_${s}`, key, [s * x, y, z], { rot: [tilt, turn, 0], scale: [s * e * sc, sc, sc] });
 }
 
+// Parte los triángulos hasta que ningún lado pase de maxLen. Cada vértice es un registro
+// [x, y, z, ...resto de atributos] y el punto medio de un lado interpola todo (normales y UV).
+// Así una pieza grande sigue también los bultos estrechos de la chapa al aplicarle la forma
+// Solo se parten los triángulos con algún vértice para el que near() es cierto (los que asoman a
+// la superficie) y los lados se miden en x e y: lo hundido en la chapa no se ve
+function splitLongEdges(tris, maxLen, near = () => true){
+  const out = [], max2 = maxLen * maxLen;
+  const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+  let guard = 0;
+  while (tris.length && guard++ < 500000){
+    const t = tris.pop();
+    if (!near(t[0]) && !near(t[1]) && !near(t[2])){ out.push(t); continue; }
+    const e = [d2(t[0], t[1]), d2(t[1], t[2]), d2(t[2], t[0])];
+    const k = e[0] >= e[1] && e[0] >= e[2] ? 0 : e[1] >= e[2] ? 1 : 2;
+    if (e[k] <= max2){ out.push(t); continue; }
+    const A = t[k], B = t[(k + 1) % 3], C = t[(k + 2) % 3];
+    const M = A.map((x, i) => (x + B[i]) / 2);
+    tris.push([A, M, C], [M, B, C]);
+  }
+  return out.concat(tris);
+}
+
 // Dobla una pieza de Blender para que siga el perfil de la cara (morro o zaga) en altura: cada
 // vértice avanza o retrocede lo que cambia la cara respecto a la altura yRef. Así un faldón alto
-// apoya entero en una zaga redondeada. La geometría pasa a ser propia de esta copia
-function conformToFace(obj, P, dir, yRef){
+// apoya entero en una zaga redondeada. La geometría pasa a ser propia de esta copia. Con maxEdge,
+// antes se parten los triángulos grandes (en metros del coche) para que la forma la doble bien
+function conformToFace(obj, P, dir, yRef, maxEdge = 0){
   if (!obj) return;
   obj.updateMatrixWorld(true);
   const z0 = faceZ(P, yRef, dir), cache = new Map();
@@ -3780,6 +3803,42 @@ function conformToFace(obj, P, dir, yRef){
   const v = new THREE.Vector3(), n = new THREE.Vector3(), inv = new THREE.Matrix4(), nm = new THREE.Matrix3(), nmInv = new THREE.Matrix3();
   obj.traverse(o => {
     if (!o.isMesh) return;
+    if (maxEdge > 0){
+      // Triángulos con la posición en metros del coche (para medir los lados), partidos, y de
+      // vuelta a las coordenadas de la pieza. El resto de atributos se interpola tal cual
+      const g0 = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
+      const names = Object.keys(g0.attributes).filter(k => k !== 'position');
+      const sizes = names.map(k => g0.attributes[k].itemSize);
+      const pa = g0.attributes.position, recs = [];
+      for (let i = 0; i < pa.count; i++){
+        v.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld);
+        const r = [v.x, v.y, v.z];
+        names.forEach((k, j) => { const at = g0.attributes[k]; for (let c = 0; c < sizes[j]; c++) r.push(at.getComponent(i, c)); });
+        recs.push(r);
+      }
+      const tris = [];
+      for (let i = 0; i + 2 < recs.length; i += 3) tris.push([recs[i], recs[i + 1], recs[i + 2]]);
+      const flat = splitLongEdges(tris, maxEdge, r => dir * (r[2] - z0 - fz(r[1])) > -0.02).flat();
+      inv.copy(o.matrixWorld).invert();
+      const tess = new THREE.BufferGeometry();
+      const L = new Float32Array(flat.length * 3);
+      flat.forEach((r, i) => { v.set(r[0], r[1], r[2]).applyMatrix4(inv); L[3 * i] = v.x; L[3 * i + 1] = v.y; L[3 * i + 2] = v.z; });
+      tess.setAttribute('position', new THREE.BufferAttribute(L, 3));
+      let off = 3;
+      names.forEach((k, j) => {
+        const arr = new Float32Array(flat.length * sizes[j]);
+        flat.forEach((r, i) => { for (let c = 0; c < sizes[j]; c++) arr[i * sizes[j] + c] = r[off + c]; });
+        tess.setAttribute(k, new THREE.BufferAttribute(arr, sizes[j]));
+        off += sizes[j];
+      });
+      if (tess.attributes.normal){
+        // Las normales interpoladas se vuelven a hacer unitarias
+        const nn = tess.attributes.normal;
+        for (let i = 0; i < nn.count; i++){ n.fromBufferAttribute(nn, i).normalize(); nn.setXYZ(i, n.x, n.y, n.z); }
+      }
+      if (g0 !== o.geometry) g0.dispose();
+      o.geometry = tess;
+    }
     const src = o.geometry, pos = src.attributes.position, nor = src.attributes.normal;
     inv.copy(o.matrixWorld).invert();
     nm.getNormalMatrix(o.matrixWorld);
@@ -5192,12 +5251,14 @@ function buildHeadlights(parent, P){
 
 // Parrilla delantera centrada en (0, y) sobre la cara z
 function buildGrille(g, type, gW, gH, y, zFace, prot){
+  // El marco y las lamas salen unos milímetros más que el fondo: si estuvieran en el mismo plano,
+  // al doblar la parrilla con la forma del morro se pelearían a trozos
   const framed = (name, w, h, x = 0) => {
     embedBox(g, `${name}Base`, [w, h, 0],           [x, y, zFace],                [0,0,1], prot, MAT.grilleBase);
-    embedBox(g, `${name}Top`,  [w + 0.06, 0.02, 0], [x, y + h / 2, zFace],        [0,0,1], prot, MAT.chrome);
-    embedBox(g, `${name}Bot`,  [w + 0.06, 0.02, 0], [x, y - h / 2, zFace],        [0,0,1], prot, MAT.chrome);
-    embedBox(g, `${name}L`,    [0.025, h, 0],       [x - w / 2 - 0.03, y, zFace], [0,0,1], prot, MAT.chrome);
-    embedBox(g, `${name}R`,    [0.025, h, 0],       [x + w / 2 + 0.03, y, zFace], [0,0,1], prot, MAT.chrome);
+    embedBox(g, `${name}Top`,  [w + 0.06, 0.02, 0], [x, y + h / 2, zFace],        [0,0,1], prot + 0.003, MAT.chrome);
+    embedBox(g, `${name}Bot`,  [w + 0.06, 0.02, 0], [x, y - h / 2, zFace],        [0,0,1], prot + 0.003, MAT.chrome);
+    embedBox(g, `${name}L`,    [0.025, h, 0],       [x - w / 2 - 0.03, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
+    embedBox(g, `${name}R`,    [0.025, h, 0],       [x + w / 2 + 0.03, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
   };
   // Contorno libre: fondo oscuro extruido y marco cromado con el mismo contorno
   const shaped = (name, outline) => {
@@ -5267,13 +5328,13 @@ function buildGrille(g, type, gW, gH, y, zFace, prot){
       const px = vertical ? t * gW * 0.92 : 0;
       const py = vertical ? y : y + t * gH * 0.92;
       const sz = vertical ? [0.018, gH * 0.92, 0] : [gW * 0.92, 0.018, 0];
-      embedBox(g, `GrilleSlat_${i}`, sz, [px, py, zFace], [0,0,1], prot, MAT.chrome);
+      embedBox(g, `GrilleSlat_${i}`, sz, [px, py, zFace], [0,0,1], prot + 0.004, MAT.chrome);
     }
   } else if (type === 'honeycomb' || type === 'mesh'){
-    embedBox(g, 'GrilleInnerBorder', [gW - 0.02, 0.015, 0], [0, y + gH / 2 - 0.02, zFace], [0,0,1], prot, MAT.chrome);
+    embedBox(g, 'GrilleInnerBorder', [gW - 0.02, 0.015, 0], [0, y + gH / 2 - 0.02, zFace], [0,0,1], prot + 0.003, MAT.chrome);
   } else if (type === 'cross'){
-    embedBox(g, 'GrilleCrossH', [gW * 0.96, 0.022, 0], [0, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
-    embedBox(g, 'GrilleCrossV', [0.022, gH * 0.96, 0], [0, y, zFace], [0,0,1], prot + 0.003, MAT.chrome);
+    embedBox(g, 'GrilleCrossH', [gW * 0.96, 0.022, 0], [0, y, zFace], [0,0,1], prot + 0.005, MAT.chrome);
+    embedBox(g, 'GrilleCrossV', [0.022, gH * 0.96, 0], [0, y, zFace], [0,0,1], prot + 0.0055, MAT.chrome);
   }
 }
 
@@ -5296,10 +5357,13 @@ function buildFrontDetails(P){
   const { gW, gH, y: grilleY } = grilleBand(P);
   const grille = new THREE.Group();
   grille.name = 'Grille';
-  grille.position.set(0, grilleY, faceZ(P, grilleY, 1));
-  grille.rotation.x = faceTilt(P, grilleY, 1);
+  // Va 6 mm por delante de la cara del contorno (la chapa crece 2 mm más allá de ella) y, en vez de
+  // inclinarse como un plano, se dobla para seguir el perfil del morro: así la chapa curvada no
+  // asoma a través de la parrilla
+  grille.position.set(0, grilleY, faceZ(P, grilleY, 1) + 0.006);
   g.add(grille);
   buildGrille(grille, G.type, gW, gH, 0, 0, G.protrudeZ);
+  conformToFace(grille, P, 1, grilleY, 0.025);
 
   // Tomas de aire del paragolpes: recortadas en la chapa o, sin recorte, planas sobre ella
   if (P._carved && P._carved.has('intake1')) buildIntakes(g, P, 1);
