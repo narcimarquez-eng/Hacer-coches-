@@ -589,7 +589,8 @@
     <button id="btnWheels">🔄 Rodar ruedas</button>
   </div>
   <div class="grp actions">
-    <button id="btnExport">⬇ Exportar GLB</button>
+    <button id="btnExportLite" title="Comprimido con gltfpack: pesa mucho menos y lleva las animaciones">⬇ GLB ligero</button>
+    <button id="btnExport" title="Sin comprimir, tal cual sale del editor, con las animaciones">⬇ GLB completo</button>
   </div>
 </div>
 
@@ -6083,15 +6084,30 @@ function buildWheel(P, side, z){
   return g;
 }
 
+// Cada rueda cuelga de un buje con nombre (Wheel_FL, Wheel_FR...): el buje gira para la dirección
+// y lleva la pinza; dentro, WheelSpin_* es lo que rueda. Así las animaciones del GLB pueden mover
+// cada cosa por separado. x > 0 es el lado izquierdo del conductor (el coche mira hacia +z)
 function buildWheels(P){
   const group = new THREE.Group();
   group.name = 'Wheels';
   const list = [];
   for (const sx of [-1, 1]){
     for (const z of [P.frontAxleZ, P.rearAxleZ]){
+      const tag = (z === P.frontAxleZ ? 'F' : 'R') + (sx > 0 ? 'L' : 'R');
       const w = buildWheel(P, sx, z);
-      group.add(w);
-      if (w.userData.fixed) group.add(w.userData.fixed);
+      const hub = new THREE.Group();
+      hub.name = 'Wheel_' + tag;
+      hub.position.copy(w.position);
+      w.position.set(0, 0, 0);
+      w.name = 'WheelSpin_' + tag;
+      hub.add(w);
+      const fixed = w.userData.fixed;
+      if (fixed){
+        fixed.position.set(0, 0, 0);
+        fixed.name = 'BrakeCaliper_' + tag;
+        hub.add(fixed);
+      }
+      group.add(hub);
       list.push(w);
     }
   }
@@ -6878,7 +6894,8 @@ function bindUI(){
       requestAnimationFrame(spin);
     })();
   });
-  $('btnExport').addEventListener('click', exportGLB);
+  $('btnExport').addEventListener('click', () => exportGLB('full'));
+  $('btnExportLite').addEventListener('click', () => exportGLB('lite'));
 }
 
 function syncUI(){
@@ -7257,30 +7274,171 @@ function resetAll(){
   markDirty();
 }
 
-function exportGLB(){
-  setStatus('Exportando GLB…');
+// Animaciones que viajan dentro del GLB (cada visor o Blender las muestra por su nombre):
+// Ruedas: las cuatro ruedan hacia delante (dos vueltas por segundo, en bucle)
+// Dirección: las delanteras giran a un lado y al otro con sus pinzas
+// Giro 360: el coche entero da una vuelta sobre sí mismo (solo un coche, no el showroom)
+function exportAnimations(root, turntable){
+  const spin = [], steer = [];
+  root.traverse(o => {
+    if (/^WheelSpin_/.test(o.name)) spin.push(o);
+    if (/^Wheel_F[LR]$/.test(o.name)) steer.push(o);
+  });
+  const q = new THREE.Quaternion(), X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0);
+  // Pista de giro sobre un eje: claves cada pocos grados para que la interpolación siga el giro
+  const track = (o, n, T, angle, axis) => {
+    const times = [], values = [];
+    for (let i = 0; i <= n; i++){
+      const t = T * i / n;
+      q.setFromAxisAngle(axis, angle(t)).premultiply(o.userData.restQuat || (o.userData.restQuat = o.quaternion.clone()));
+      times.push(t); values.push(q.x, q.y, q.z, q.w);
+    }
+    return new THREE.QuaternionKeyframeTrack(`${o.uuid}.quaternion`, times, values);
+  };
+  for (const o of [...spin, ...steer, root]) o.userData.restQuat = (o === root || steer.includes(o)) ? o.quaternion.clone() : new THREE.Quaternion();
+  const clips = [];
+  if (spin.length) clips.push(new THREE.AnimationClip('Ruedas', 1, spin.map(o => track(o, 16, 1, t => 4 * Math.PI * t, X))));
+  if (steer.length) clips.push(new THREE.AnimationClip('Direccion', 3, steer.map(o => track(o, 24, 3, t => 0.45 * Math.sin(2 * Math.PI * t / 3), Y))));
+  if (turntable) clips.push(new THREE.AnimationClip('Giro360', 12, [track(root, 24, 12, t => 2 * Math.PI * t / 12, Y)]));
+  for (const o of [...spin, ...steer, root]) delete o.userData.restQuat;
+  return clips;
+}
+
+// Guardar archivos dentro del visor de Claude (artefacto): se pide al cargar y responde más tarde
+const downloadsCap = window.claude && typeof window.claude.use === 'function'
+  ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+
+// ZIP sin comprimir (método 0) con un solo archivo. El visor de Claude solo deja guardar ciertos
+// formatos y .glb no está entre ellos: ahí el GLB se entrega dentro de un .zip
+function zipOne(name, data){
+  const T = zipOne.table || (zipOne.table = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  }));
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < data.length; i++) crc = T[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+  crc = (crc ^ 0xFFFFFFFF) >>> 0;
+  const fname = new TextEncoder().encode(name), n = data.length;
+  const head = (sig, size) => { const v = new DataView(new ArrayBuffer(size)); v.setUint32(0, sig, true); return v; };
+  const local = head(0x04034b50, 30);
+  [[4, 20], [12, 0x21], [26, fname.length]].forEach(([o, x]) => local.setUint16(o, x, true));
+  [[14, crc], [18, n], [22, n]].forEach(([o, x]) => local.setUint32(o, x, true));
+  const central = head(0x02014b50, 46);
+  [[4, 20], [6, 20], [14, 0x21], [28, fname.length]].forEach(([o, x]) => central.setUint16(o, x, true));
+  [[16, crc], [20, n], [24, n]].forEach(([o, x]) => central.setUint32(o, x, true));
+  const end = head(0x06054b50, 22);
+  [[8, 1], [10, 1]].forEach(([o, x]) => end.setUint16(o, x, true));
+  end.setUint32(12, 46 + fname.length, true);
+  end.setUint32(16, 30 + fname.length + n, true);
+  return new Blob([local, fname, data, central, fname, end], { type: 'application/zip' });
+}
+
+// Descarga el GLB: en el visor de Claude dentro de un .zip (con su confirmación); fuera de él,
+// directamente como .glb. Devuelve 'glb', 'zip' o 'declined'
+async function downloadBytes(bytes, name){
+  const dl = await downloadsCap;
+  if (dl){
+    try {
+      await dl.save({ filename: name.replace(/\.glb$/, '.zip'), data: zipOne(name, bytes) });
+      return 'zip';
+    } catch (err){
+      if (err && err.code === 'declined') return 'declined';
+      console.warn('No se pudo guardar con el visor', err);
+    }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes], { type: 'model/gltf-binary' }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  return 'glb';
+}
+
+// gltfpack (meshoptimizer, licencia MIT) compilado a WebAssembly: la misma herramienta que
+// prepara las piezas de Blender, aquí dentro del navegador. Se carga solo al pedir el GLB ligero,
+// primero de la carpeta vendor/ junto a la página y, si no está, de jsDelivr
+const GLTFPACK_SOURCES = ['vendor/gltfpack/', 'https://cdn.jsdelivr.net/npm/gltfpack@0.23.0/'];
+let gltfpackReady = null;
+function loadScript(src){
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = resolve;
+    el.onerror = () => reject(new Error('No se pudo cargar ' + src));
+    document.head.appendChild(el);
+  });
+}
+function loadGltfpack(){
+  if (gltfpackReady) return gltfpackReady;
+  gltfpackReady = (async () => {
+    let lastErr = null;
+    for (const base of GLTFPACK_SOURCES){
+      try {
+        const res = await fetch(base + 'library.wasm');
+        if (!res.ok) throw new Error(`${base}library.wasm: ${res.status}`);
+        const wasm = await res.arrayBuffer();
+        if (!window.gltfpack) await loadScript(base + 'library.js');
+        window.gltfpack.init(wasm);
+        return window.gltfpack;
+      } catch (err){ lastErr = err; }
+    }
+    throw lastErr;
+  })();
+  gltfpackReady.catch(() => { gltfpackReady = null; });
+  return gltfpackReady;
+}
+
+// GLB ligero: gltfpack suelda vértices, cuantiza normales y coordenadas de textura y reordena los
+// datos. Las posiciones quedan en coma flotante (-vpf) para no mover piezas pequeñas, y se
+// conservan los nombres de las piezas (-kn) y las animaciones. Se abre en Blender y en visores web
+async function packGLB(bytes){
+  const gp = await loadGltfpack();
+  let out = null;
+  await gp.pack(['-i', 'in.glb', '-o', 'out.glb', '-vpf', '-kn'], {
+    read: path => { if (path !== 'in.glb') throw new Error('No existe ' + path); return bytes; },
+    write: (path, data) => { if (path === 'out.glb') out = data.slice(); },
+  });
+  if (!out || !out.length) throw new Error('gltfpack no generó el archivo');
+  return out;
+}
+
+// kind: 'full' (tal cual sale de three.js) o 'lite' (pasado por gltfpack: mucho más ligero)
+async function exportGLB(kind = 'full'){
+  setStatus(kind === 'lite' ? 'Exportando GLB ligero…' : 'Exportando GLB…');
   // La caja de selección es solo del editor: se oculta mientras dura la exportación
   const highlight = zoneHighlight;
   const highlightWasVisible = highlight ? highlight.visible : false;
   if (highlight) highlight.visible = false;
-  const restoreHighlight = () => { if (highlight) highlight.visible = highlightWasVisible; };
-
-  new GLTFExporter().parse(
-    showroomMode ? showroomGroup : car,
-    buf => {
-      restoreHighlight();
-      const blob = new Blob([buf], { type: 'model/gltf-binary' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `car_${showroomMode ? 'showroom_5_cars' : CONFIG.model}.glb`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      setStatus('✓ GLB exportado');
-      setTimeout(() => setStatus('✓ Listo'), 2000);
-    },
-    err => { restoreHighlight(); console.error(err); setStatus('❌ Error al exportar'); },
-    { binary: true, onlyVisible: true }
-  );
+  const root = showroomMode ? showroomGroup : car;
+  const base = `car_${showroomMode ? 'showroom' : CONFIG.model}`;
+  let bytes;
+  try {
+    const animations = exportAnimations(root, !showroomMode);
+    bytes = new Uint8Array(await new GLTFExporter().parseAsync(root, { binary: true, onlyVisible: true, animations }));
+  } catch (err){
+    console.error(err);
+    setStatus('❌ Error al exportar');
+    return;
+  } finally {
+    if (highlight) highlight.visible = highlightWasVisible;
+  }
+  const MB = n => (n / 1e6).toFixed(1).replace('.', ',') + ' MB';
+  let file = bytes, name = `${base}.glb`, msg = `✓ GLB completo: ${MB(bytes.length)}`;
+  if (kind === 'lite'){
+    setStatus('Comprimiendo con gltfpack…');
+    try {
+      file = await packGLB(bytes);
+      name = `${base}_ligero.glb`;
+      msg = `✓ GLB ligero: ${MB(file.length)} (el completo pesa ${MB(bytes.length)})`;
+    } catch (err){
+      console.warn('gltfpack no disponible', err);
+      msg = '⚠ No se pudo comprimir: se descarga el GLB completo';
+    }
+  }
+  const how = await downloadBytes(file, name);
+  setStatus(how === 'declined' ? 'Descarga cancelada' : how === 'zip' ? msg + ' (dentro de un .zip)' : msg);
+  setTimeout(() => setStatus('✓ Listo'), 5000);
 }
 
 createMaterials();
