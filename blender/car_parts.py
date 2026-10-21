@@ -26,6 +26,7 @@ ROLES = {   # color solo para la vista previa en Blender
     'dash': (0.06, 0.05, 0.05), 'wood': (0.3, 0.16, 0.06), 'ambient': (0.2, 0.4, 1.0), 'analog': (0.85, 0.85, 0.85),
     'screen': (0.03, 0.05, 0.15), 'screen_cluster': (0.03, 0.05, 0.15), 'screen_info': (0.03, 0.05, 0.15),
     'screen_wide': (0.03, 0.05, 0.15), 'screen_rear': (0.03, 0.05, 0.15),
+    'brake': (0.35, 0.35, 0.36), 'light_red': (1.0, 0.05, 0.02),
 }
 
 
@@ -975,6 +976,71 @@ def audio_parts():
     mesh(r, 'screen', screen_quad(0.21, 0.125, (0, 0, -0.0165)), 'screen_rear', keep_winding=True, uv=SCREEN_UV)
 
 
+# --------------------------------------------------------------------------- detalles exteriores
+def exterior_details():
+    # Discos de freno ventilados (radio de diseño 0.20, cara hacia +z, centrados en z = 0)
+    for kind in ('plain', 'drilled', 'slotted'):
+        r = part('brake_disc_' + kind)
+        rotor = lathe([(0.11, -0.014), (0.20, -0.014), (0.20, 0.014), (0.11, 0.014)], 72)
+        mesh(r, 'rotor', rotor, 'brake', 0.0, 3, 30)
+        # ventilación entre las dos pistas (se ve por el canto)
+        mesh(r, 'vanes', ring_of(lambda: box(0.085, 0.006, 0.010), 36, 0.155), 'dark')
+        hat = lathe([(0.0, 0.032), (0.078, 0.032), (0.086, 0.024), (0.10, 0.012), (0.112, 0.006), (0.112, -0.008), (0.0, -0.008)], 48)
+        mesh(r, 'hat', hat, 'steel', 0.0, 3, 30)
+        mesh(r, 'nuts', ring_of(lambda: cyl(0.008, 0.012, 'z', (0, 0, 0.036), 6), 5, 0.05), 'chrome')
+        if kind == 'drilled':
+            holes = Geo()
+            for ring_r, n, ph in ((0.13, 16, 0.0), (0.152, 16, 0.065), (0.175, 16, 0.13)):
+                for k in range(n):
+                    a = ph + 2 * math.pi * k / n
+                    holes.merge(cyl(0.0055, 0.0295, 'z', (ring_r * math.cos(a), ring_r * math.sin(a), 0), 10))
+            mesh(r, 'holes', holes, 'dark')
+        if kind == 'slotted':
+            mesh(r, 'slots', ring_of(lambda: box(0.07, 0.0045, 0.0295).rot('z', 0.55), 8, 0.155), 'dark')
+
+    # Pinza de freno deportiva: bloque curvo que abraza el borde del disco (arriba, en +y)
+    r = part('caliper_sport')
+    arc = [(0.195 * math.sin(a), 0.195 * math.cos(a), 0.0) for a in [-0.55 + 1.1 * k / 12 for k in range(13)]]
+    body = sweep(arc, rrect(0.075, 0.075, 0.012), up=(0.0, 0.0, 1.0))
+    mesh(r, 'body', body, 'red', 0.004)
+    mesh(r, 'bridge', sweep(arc[3:10], rrect(0.03, 0.08, 0.006), up=(0.0, 0.0, 1.0)).move(0, 0.03, 0), 'red', 0.003)
+    mesh(r, 'pins', Geo().merge(cyl(0.007, 0.08, 'z', (-0.06, 0.215, 0), 12), cyl(0.007, 0.08, 'z', (0.06, 0.215, 0), 12)), 'chrome')
+    r = part('caliper_classic')
+    arc = [(0.19 * math.sin(a), 0.19 * math.cos(a), 0.0) for a in [-0.35 + 0.7 * k / 8 for k in range(9)]]
+    mesh(r, 'body', sweep(arc, rrect(0.055, 0.07, 0.01), up=(0.0, 0.0, 1.0)), 'red', 0.004)
+
+    # Limpiaparabrisas en reposo: pivote en el origen, brazo y escobilla hacia -x (largo total 1),
+    # y = 0 es la superficie del cristal y z sube por el cristal
+    r = part('wiper')
+    mesh(r, 'pivot', cyl(0.022, 0.026, 'y', (0, 0.013, 0), 20), 'plastic', 0.004)
+    mesh(r, 'arm', sweep([(-0.01, 0.026, 0.0), (-0.12, 0.022, 0.004), (-0.55, 0.018, 0.012), (-0.86, 0.016, 0.016)], rrect(0.016, 0.008, 0.003), up=(0.0, 1.0, 0.0)), 'plastic')
+    mesh(r, 'blade', box(0.80, 0.012, 0.016, (-0.56, 0.009, 0.024)), 'plastic', 0.003)
+    mesh(r, 'rubber', box(0.80, 0.004, 0.006, (-0.56, 0.002, 0.024)), 'rubber')
+    mesh(r, 'spoiler', box(0.42, 0.006, 0.014, (-0.62, 0.018, 0.020)).rot('x', -0.5, (-0.62, 0.018, 0.020)), 'plastic')
+
+    # Rejilla de la base del parabrisas (ancho 1, fondo 0.11, cara hacia +y)
+    r = part('cowl')
+    mesh(r, 'panel', box(1.0, 0.008, 0.11, (0, 0.004, 0)), 'plastic', 0.003)
+    slots = Geo()
+    for k in range(18):
+        x = -0.40 + 0.80 * k / 17
+        slots.merge(box(0.028, 0.004, 0.05, (x, 0.008, 0.012)))
+    mesh(r, 'slots', slots, 'dark')
+
+    # Tapa de depósito / carga (cara hacia +z, enrasada en z = 0)
+    r = part('fuel_door')
+    mesh(r, 'door', prism(rrect(0.17, 0.12, 0.025, 5), 0.004, 'xy', (0, 0, 0.002)), 'paint', 0.0015)
+    mesh(r, 'gap', prism(rrect(0.18, 0.13, 0.03, 5), 0.002, 'xy', (0, 0, 0.0005)), 'dark')
+    r = part('fuel_door_round')
+    mesh(r, 'door', cyl(0.062, 0.004, 'z', (0, 0, 0.002), 40), 'paint', 0.0015)
+    mesh(r, 'gap', cyl(0.067, 0.002, 'z', (0, 0, 0.0005), 40), 'dark')
+
+    # Tercera luz de freno (cara hacia +z): carcasa oscura y franja de luz
+    r = part('chmsl')
+    mesh(r, 'housing', box(0.26, 0.032, 0.03, (0, 0, -0.012)), 'plastic', 0.004)
+    mesh(r, 'light', box(0.23, 0.012, 0.006, (0, 0, 0.004)), 'light_red')
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -994,6 +1060,7 @@ def main():
     steering_wheels()
     console_parts()
     audio_parts()
+    exterior_details()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
