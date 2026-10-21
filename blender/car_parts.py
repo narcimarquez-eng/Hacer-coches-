@@ -27,7 +27,8 @@ ROLES = {   # color solo para la vista previa en Blender
     'screen': (0.03, 0.05, 0.15), 'screen_cluster': (0.03, 0.05, 0.15), 'screen_info': (0.03, 0.05, 0.15),
     'screen_wide': (0.03, 0.05, 0.15), 'screen_rear': (0.03, 0.05, 0.15),
     'brake': (0.35, 0.35, 0.36), 'light_red': (1.0, 0.05, 0.02), 'darkchrome': (0.22, 0.23, 0.26),
-    'reflector': (0.45, 0.02, 0.02),
+    'reflector': (0.45, 0.02, 0.02), 'gloss': (0.01, 0.01, 0.012), 'textured': (0.06, 0.06, 0.065),
+    'amber': (1.0, 0.5, 0.05),
 }
 
 
@@ -1178,6 +1179,155 @@ def suv_rear_parts():
     mesh(r, 'lipline', box(0.70, 0.008, 0.03, (0, 0.0, 0.016)), 'dark')
 
 
+# --------------------------------------------------------------------------- frontal y zaga bajos
+def lower_fascia_parts():
+    # ---- Molduras bajo la parrilla: ancho de diseño 1.0, origen en el centro sobre la chapa
+    r = part('trim_bar')            # lama cromada recta
+    mesh(r, 'bar', sweep([(-0.5 + k / 10, 0.0, 0.004) for k in range(11)], rrect(0.012, 0.016, 0.005)), 'chrome', 0.003)
+
+    r = part('trim_smile')          # sonrisa cromada: sube en los extremos
+    pts = [(x, 0.075 * abs(2 * x) ** 3, 0.004) for x in [-0.5 + k / 40 for k in range(41)]]
+    mesh(r, 'bar', sweep(pts, rrect(0.012, 0.015, 0.005)), 'chrome', 0.003)
+
+    r = part('trim_wing')           # ala de aluminio con los extremos hacia abajo
+    pts = rounded_poly([(-0.5, -0.11, 0.004), (-0.41, 0.0, 0.004), (0.41, 0.0, 0.004), (0.5, -0.11, 0.004)], 0.05, 6)
+    mesh(r, 'blade', sweep(pts, [(-0.004, -0.016), (0.016, -0.011), (0.016, 0.011), (-0.004, 0.016)]), 'alu', 0.003)
+    mesh(r, 'shadow', sweep([(p[0], p[1] - 0.024, 0.0) for p in pts], rrect(0.008, 0.010, 0.003)), 'gloss')
+
+    r = part('trim_gloss')          # banda negra brillante con filo cromado
+    mesh(r, 'band', box(1.0, 0.040, 0.010, (0, 0, 0.002)), 'gloss', 0.003)
+    mesh(r, 'edge', box(1.0, 0.006, 0.006, (0, 0.021, 0.006)), 'chrome', 0.0015)
+
+    r = part('trim_led')            # tira de luz diurna bajo la parrilla
+    mesh(r, 'channel', box(1.02, 0.024, 0.010, (0, 0, 0.0)), 'dark', 0.003)
+    mesh(r, 'led', box(1.0, 0.010, 0.006, (0, 0, 0.004)), 'light', 0.002)
+
+    # ---- Faldones delanteros decorativos (ancho de diseño 1.90, origen en el borde inferior)
+    r = part('apron_lip_alu')       # labio de aluminio que sube en las esquinas
+    pts = rounded_poly([(-0.92, 0.12, 0.0), (-0.78, 0.0, 0.0), (0.78, 0.0, 0.0), (0.92, 0.12, 0.0)], 0.07, 6)
+    mesh(r, 'lip', sweep(pts, [(-0.008, -0.004), (0.045, -0.004), (0.05, 0.002), (0.012, 0.026), (-0.008, 0.026)]), 'alu', 0.003)
+
+    r = part('apron_black')         # faldón negro texturizado con rejilla central y lamas plateadas
+    band = [(-0.93, 0.0), (0.93, 0.0), (0.95, 0.17), (0.80, 0.17), (0.66, 0.095), (-0.66, 0.095), (-0.80, 0.17), (-0.95, 0.17)]
+    mesh(r, 'band', prism(band, 0.024, 'xy', (0, 0, 0.0)), 'textured', 0.004)
+    mesh(r, 'insert', box(1.0, 0.052, 0.010, (0, 0.046, 0.011)), 'dark', 0.003)
+    mesh(r, 'slats', Geo().merge(box(0.98, 0.006, 0.012, (0, 0.034, 0.014)), box(0.98, 0.006, 0.012, (0, 0.058, 0.014))), 'alu')
+    mesh(r, 'underlip', box(1.20, 0.012, 0.04, (0, 0.006, 0.02)), 'alu', 0.004)
+
+    r = part('apron_wing')          # ala cromada que enmarca las tomas laterales y labio negro
+    pts = rounded_poly([(-0.88, 0.25, 0.008), (-0.80, 0.05, 0.008), (0.80, 0.05, 0.008), (0.88, 0.25, 0.008)], 0.06, 6)
+    mesh(r, 'wing', sweep(pts, rrect(0.012, 0.022, 0.005)), 'chrome', 0.003)
+    mesh(r, 'lip', prism([(-0.80, -0.005), (0.80, -0.005), (0.74, 0.05), (-0.74, 0.05)], 0.014, 'xz', (0, 0.007, 0)), 'gloss', 0.004)
+
+    r = part('apron_splitter')      # splitter negro brillante de tres piezas con placas
+    mesh(r, 'blade', prism([(-0.86, -0.01), (0.86, -0.01), (0.80, 0.075), (-0.80, 0.075)], 0.014, 'xz', (0, 0.007, 0)), 'gloss', 0.004)
+    mesh(r, 'face', box(1.60, 0.05, 0.012, (0, 0.035, 0.0)), 'gloss', 0.003)
+    mesh(r, 'line', box(0.90, 0.008, 0.010, (0, 0.035, 0.008)), 'alu')
+    plates = Geo()
+    for x in (-0.84, 0.84):
+        plates.merge(prism([(-0.01, 0.0), (0.075, 0.0), (0.045, 0.075), (-0.01, 0.075)], 0.012, 'zy', (x, 0, 0)))
+    mesh(r, 'plates', plates, 'gloss', 0.003)
+
+    r = part('apron_guard')         # protector negro de campo con placa plateada y ganchos
+    guard = [(-0.94, 0.0), (0.94, 0.0), (0.94, 0.12), (0.70, 0.15), (-0.70, 0.15), (-0.94, 0.12)]
+    mesh(r, 'band', prism(guard, 0.03, 'xy'), 'textured', 0.005)
+    mesh(r, 'plate', prism([(-0.42, 0.0), (0.42, 0.0), (0.36, 0.095), (-0.36, 0.095)], 0.02, 'xy', (0, 0, 0.02)), 'alu', 0.004)
+    mesh(r, 'bolts', Geo().merge(*[cyl(0.008, 0.006, 'z', (x, 0.07, 0.031), 10) for x in (-0.30, -0.10, 0.10, 0.30)]), 'steel')
+    hooks = Geo()
+    for x in (-0.58, 0.58):
+        hooks.merge(tube([(x + 0.03 * math.cos(math.pi * k / 10), 0.06 + 0.03 * math.sin(math.pi * k / 10), 0.035) for k in range(11)], 0.008, 10))
+        hooks.merge(box(0.075, 0.016, 0.02, (x, 0.06, 0.022)))
+    mesh(r, 'hooks', hooks, 'red')
+
+    # ---- Faldones traseros decorativos (modelados hacia +z; la app los gira)
+    r = part('rapron_black')        # negro con aletas de difusor y catadióptricos
+    mesh(r, 'band', prism(band, 0.024, 'xy'), 'textured', 0.004)
+    fins = Geo()
+    for x in (-0.36, -0.18, 0.0, 0.18, 0.36):
+        fins.merge(prism([(0.0, 0.0), (0.05, 0.0), (0.02, 0.07), (0.0, 0.07)], 0.010, 'zy', (x, 0, 0.004)))
+    mesh(r, 'fins', fins, 'dark')
+    mesh(r, 'reflectors', Geo().merge(box(0.03, 0.10, 0.012, (-0.86, 0.11, 0.014)), box(0.03, 0.10, 0.012, (0.86, 0.11, 0.014))), 'reflector', 0.003)
+
+    r = part('rapron_chrome')       # banda negra brillante con lama cromada y catadióptricos
+    mesh(r, 'band', prism([(-0.90, 0.0), (0.90, 0.0), (0.92, 0.09), (-0.92, 0.09)], 0.02, 'xy'), 'gloss', 0.004)
+    mesh(r, 'strip', box(1.40, 0.014, 0.010, (0, 0.125, 0.006)), 'chrome', 0.003)
+    mesh(r, 'reflectors', Geo().merge(box(0.16, 0.022, 0.010, (-0.82, 0.125, 0.006)), box(0.16, 0.022, 0.010, (0.82, 0.125, 0.006))), 'reflector', 0.003)
+
+    r = part('rapron_valance')      # negro brillante con marcos cromados de escape trapezoidales
+    mesh(r, 'band', prism([(-0.92, 0.0), (0.92, 0.0), (0.92, 0.14), (-0.92, 0.14)], 0.02, 'xy'), 'gloss', 0.004)
+    frames, holes = Geo(), Geo()
+    for x in (-0.48, 0.48):
+        frames.merge(prism([(x - 0.14, 0.11), (x + 0.14, 0.11), (x + 0.12, 0.03), (x - 0.12, 0.03)], 0.02, 'xy', (0, 0, 0.008)))
+        holes.merge(prism([(x - 0.125, 0.10), (x + 0.125, 0.10), (x + 0.107, 0.04), (x - 0.107, 0.04)], 0.02, 'xy', (0, 0, 0.011)))
+    mesh(r, 'frames', frames, 'chrome', 0.003)
+    mesh(r, 'holes', holes, 'dark')
+    mesh(r, 'line', box(0.68, 0.008, 0.008, (0, 0.10, 0.014)), 'chrome')
+
+    r = part('rapron_guard')        # protector negro con placa plateada y gancho
+    mesh(r, 'band', prism(guard, 0.03, 'xy'), 'textured', 0.005)
+    mesh(r, 'plate', prism([(-0.40, 0.0), (0.40, 0.0), (0.34, 0.09), (-0.34, 0.09)], 0.02, 'xy', (0, 0, 0.02)), 'alu', 0.004)
+    mesh(r, 'hook', tube([(0.58 + 0.03 * math.cos(math.pi * k / 10), 0.06 + 0.03 * math.sin(math.pi * k / 10), 0.035) for k in range(11)], 0.008, 10), 'red')
+
+    r = part('rapron_lip')          # labio de aluminio trasero
+    pts = rounded_poly([(-0.92, 0.10, 0.0), (-0.80, 0.0, 0.0), (0.80, 0.0, 0.0), (0.92, 0.10, 0.0)], 0.06, 6)
+    mesh(r, 'lip', sweep(pts, [(-0.008, -0.004), (0.03, -0.004), (0.035, 0.002), (0.010, 0.024), (-0.008, 0.024)]), 'alu', 0.003)
+
+    # ---- Luces bajas delanteras (segundo nivel): lado derecho, +x hacia fuera, cara hacia +z
+    r = part('fog_cube')            # tres cubos LED
+    mesh(r, 'housing', box(0.17, 0.052, 0.04, (0, 0, -0.012)), 'dark', 0.008)
+    mesh(r, 'cubes', Geo().merge(*[box(0.034, 0.030, 0.02, (x, 0, 0.006)) for x in (-0.05, 0.0, 0.05)]), 'light', 0.003)
+
+    r = part('fog_vertical')        # tira LED vertical con filo cromado
+    mesh(r, 'housing', box(0.042, 0.17, 0.035, (0, 0, -0.01)), 'dark', 0.008)
+    mesh(r, 'led', box(0.016, 0.15, 0.02, (0, 0, 0.004)), 'light', 0.004)
+    mesh(r, 'edge', box(0.004, 0.17, 0.02, (0.023, 0, 0.002)), 'chrome')
+
+    r = part('fog_cluster')         # faro principal en el paragolpes: dos proyectores e intermitente
+    mesh(r, 'housing', prism(rrect(0.23, 0.10, 0.03), 0.05, 'xy', (0, 0, -0.016)), 'dark', 0.004)
+    proj, rings = Geo(), Geo()
+    for x in (-0.065, 0.005):
+        proj.merge(cyl(0.025, 0.012, 'z', (x, 0, 0.004), 24))
+        rings.merge(lathe([(0.026, -0.004), (0.034, -0.004), (0.034, 0.006), (0.027, 0.008)], 28).move(x, 0, 0.0))
+    mesh(r, 'projectors', proj, 'light')
+    mesh(r, 'rings', rings, 'chrome')
+    mesh(r, 'amber', box(0.028, 0.068, 0.012, (0.083, 0, 0.002)), 'amber', 0.003)
+
+    r = part('fog_triangle')        # triángulo con contorno LED que apunta hacia dentro
+    tri = [(0.085, 0.04), (-0.085, 0.04), (0.085, -0.045)]
+    mesh(r, 'housing', prism(tri, 0.04, 'xy', (0, 0, -0.012)), 'dark', 0.004)
+    edge = [(0.075, 0.032, 0.006), (-0.06, 0.032, 0.006), (0.075, -0.032, 0.006), (0.075, 0.032, 0.006)]
+    mesh(r, 'led', sweep(edge, rrect(0.008, 0.008, 0.003), up=(0.0, 0.0, 1.0)), 'light')
+
+    # ---- Luces bajas traseras: en el paragolpes, lado derecho mirando hacia +z
+    r = part('rlow_reflector')      # catadióptrico vertical
+    mesh(r, 'reflector', box(0.03, 0.12, 0.012), 'reflector', 0.004)
+
+    r = part('rlow_vertical')       # tira LED roja vertical
+    mesh(r, 'housing', box(0.042, 0.17, 0.035, (0, 0, -0.01)), 'dark', 0.008)
+    mesh(r, 'led', box(0.016, 0.15, 0.02, (0, 0, 0.004)), 'light_red', 0.004)
+
+    r = part('rlow_round')          # antiniebla rojo y luz de marcha atrás
+    mesh(r, 'housing', prism(rrect(0.17, 0.07, 0.034), 0.04, 'xy', (0, 0, -0.014)), 'dark', 0.004)
+    mesh(r, 'fog', cyl(0.026, 0.012, 'z', (0.042, 0, 0.004), 24), 'light_red')
+    mesh(r, 'reverse', cyl(0.026, 0.012, 'z', (-0.042, 0, 0.004), 24), 'lens')
+    mesh(r, 'reflector', cyl(0.024, 0.004, 'z', (-0.042, 0, -0.003), 24), 'chrome')
+
+    r = part('rlow_cluster')        # segundo piloto: L roja, marcha atrás e intermitente
+    mesh(r, 'housing', prism(rrect(0.24, 0.09, 0.025), 0.045, 'xy', (0, 0, -0.016)), 'dark', 0.004)
+    mesh(r, 'red', Geo().merge(box(0.21, 0.014, 0.014, (0.0, 0.030, 0.004)), box(0.014, 0.07, 0.014, (0.105, 0.0, 0.004))), 'light_red', 0.003)
+    mesh(r, 'reverse', box(0.10, 0.034, 0.012, (-0.035, -0.010, 0.002)), 'lens', 0.004)
+    mesh(r, 'reflector', box(0.098, 0.032, 0.004, (-0.035, -0.010, -0.006)), 'chrome')
+    mesh(r, 'amber', box(0.05, 0.034, 0.012, (0.055, -0.010, 0.002)), 'amber', 0.004)
+
+    r = part('rlow_bar')            # barra roja fina de lado a lado (ancho de diseño 1.0)
+    mesh(r, 'channel', box(1.02, 0.024, 0.010, (0, 0, 0.0)), 'dark', 0.003)
+    mesh(r, 'led', box(1.0, 0.010, 0.006, (0, 0, 0.004)), 'light_red', 0.002)
+
+    # ---- Relleno de las tomas de aire (cara hacia +z, origen en el centro del frente)
+    r = part('insert_blade')        # lama horizontal de perfil alar de 1.0 de ancho
+    mesh(r, 'blade', sweep([(-0.5 + k / 10, 0.0, 0.0) for k in range(11)], [(-0.03, -0.006), (0.012, -0.010), (0.016, 0.0), (0.012, 0.010), (-0.03, 0.006)]), 'alu', 0.002)
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -1200,6 +1350,7 @@ def main():
     exterior_details()
     parametric_grille()
     suv_rear_parts()
+    lower_fascia_parts()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
