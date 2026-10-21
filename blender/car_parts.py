@@ -26,7 +26,7 @@ ROLES = {   # color solo para la vista previa en Blender
     'dash': (0.06, 0.05, 0.05), 'wood': (0.3, 0.16, 0.06), 'ambient': (0.2, 0.4, 1.0), 'analog': (0.85, 0.85, 0.85),
     'screen': (0.03, 0.05, 0.15), 'screen_cluster': (0.03, 0.05, 0.15), 'screen_info': (0.03, 0.05, 0.15),
     'screen_wide': (0.03, 0.05, 0.15), 'screen_rear': (0.03, 0.05, 0.15),
-    'brake': (0.35, 0.35, 0.36), 'light_red': (1.0, 0.05, 0.02),
+    'brake': (0.35, 0.35, 0.36), 'light_red': (1.0, 0.05, 0.02), 'darkchrome': (0.22, 0.23, 0.26),
 }
 
 
@@ -1041,6 +1041,82 @@ def exterior_details():
     mesh(r, 'light', box(0.23, 0.012, 0.006, (0, 0, 0.004)), 'light_red')
 
 
+# --------------------------------------------------------------------------- parrilla paramétrica
+def parametric_grille():
+    """Parrilla de facetas tipo joya con las luces diurnas escondidas en sus extremos (estilo
+    Tucson). Medidas de diseño: 1.50 de ancho arriba, 1.04 abajo y 0.40 de alto, centrada en el
+    origen y con la cara hacia +z (la app la escala al hueco de la parrilla)."""
+    r = part('grille_parametric')
+    top, bot, half_top, half_bot = 0.20, -0.20, 0.75, 0.52
+
+    def xm(y):   # medio ancho del trapecio a la altura y
+        return half_bot + (y - bot) / (top - bot) * (half_top - half_bot)
+
+    # Fondo oscuro con las esquinas achaflanadas
+    ch = 0.03
+    outline = [(-half_top + ch, top), (half_top - ch, top), (half_top, top - ch), (half_bot, bot + ch),
+               (half_bot - ch, bot), (-half_bot + ch, bot), (-half_bot, bot + ch), (-half_top, top - ch)]
+    mesh(r, 'base', prism(outline, 0.05, 'xy', (0, 0, -0.03)), 'dark')
+
+    # Sección facetada (u en el plano de la parrilla, v hacia fuera): dos caras en punta que brillan
+    jewel = [(-0.009, -0.035), (-0.009, 0.0), (0.0, 0.011), (0.009, 0.0), (0.009, -0.035)]
+    blade = [(-0.0065, -0.03), (-0.0065, 0.004), (0.0065, 0.004), (0.0065, -0.03)]
+    up = (0.0, 0.0, 1.0)
+
+    # Cada fila es horizontal en el centro y se abre en ala hacia los lados (más abajo cuanto más
+    # baja es la fila); en las cuatro de arriba el tramo exterior es la lama de luz diurna
+    rows = [0.160, 0.085, 0.010, -0.065, -0.140]
+
+    def row_y(ri, x):
+        y = rows[ri]
+        span = max(0.2, xm(y) - 0.16)
+        u = max(0.0, (abs(x) - 0.16) / span)
+        return y - (0.014 + 0.040 * ri) * u ** 1.5
+
+    def row_pts(ri, x0, x1, n):
+        return [(x0 + (x1 - x0) * i / n, row_y(ri, x0 + (x1 - x0) * i / n), 0.0) for i in range(n + 1)]
+
+    bars, links, drl = Geo(), Geo(), Geo()
+    lim = []
+    for ri, y in enumerate(rows):
+        edge = xm(y) - 0.02
+        inner = 0.47 if ri <= 3 else edge
+        lim.append(inner)
+        bars.merge(sweep(row_pts(ri, -inner, inner, 40), jewel, up=up))
+        if ri <= 3:
+            for sgn in (-1, 1):
+                pts = row_pts(ri, sgn * 0.485, sgn * (edge + 0.03), 8)
+                drl.merge(sweep(pts if sgn > 0 else pts[::-1], blade, up=up))
+    # Entre cada dos filas, diagonales en zigzag: triángulos facetados (celdas de joya), que se
+    # abren hacia los lados como las filas
+    for ri in range(len(rows) - 1):
+        top_lim = min(lim[ri], lim[ri + 1]) - 0.02
+        step = 0.075
+        k0 = 0 if ri % 2 == 0 else 1
+        n = int(top_lim / step)
+        for sgn in (-1, 1):
+            pts = []
+            for k in range(0, n + 1):
+                x = sgn * k * step
+                upper = (k + k0) % 2 == 0
+                pts.append((x, row_y(ri, x) - 0.004 if upper else row_y(ri + 1, x) + 0.004, 0.0))
+            for a, b in zip(pts[:-1], pts[1:]):
+                xm_ab = (a[0] + b[0]) / 2
+                if abs(xm_ab) < 0.11 and ri in (1, 2):
+                    continue   # hueco para el emblema
+                links.merge(sweep([a, b], jewel, up=up))
+    mesh(r, 'jewels', bars, 'darkchrome', 0.0, 3, 25)
+    mesh(r, 'links', links, 'darkchrome', 0.0, 3, 25)
+    mesh(r, 'drl', drl, 'light', 0.0, 3, 25)
+
+    # Emblema ovalado genérico en el centro
+    ell = [(0.085 * math.cos(2 * math.pi * k / 40), 0.012 + 0.052 * math.sin(2 * math.pi * k / 40)) for k in range(40)]
+    mesh(r, 'badge_fill', prism(ell, 0.012, 'xy', (0, 0, 0.012)), 'dark')
+    ring_path = [(px, py, 0.019) for px, py in ell] + [(ell[0][0], ell[0][1], 0.019)]
+    mesh(r, 'badge_ring', tube(ring_path, 0.006, 10), 'chrome')
+    mesh(r, 'badge_mark', prism([(-0.05, -0.012), (0.05, 0.036), (0.05, 0.026), (-0.05, -0.022)], 0.006, 'xy', (0, 0.012, 0.02)), 'chrome')
+
+
 def main():
     global MATS
     MATS = reset_scene()
@@ -1061,6 +1137,7 @@ def main():
     console_parts()
     audio_parts()
     exterior_details()
+    parametric_grille()
     bpy.ops.export_scene.gltf(
         filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
         export_cameras=False, export_lights=False, export_extras=False, export_texcoords=True,
